@@ -2,11 +2,14 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/compressed_image.hpp"
 #include "sensor_msgs/image_encodings.hpp"
-#include "opencv2/opencv.hpp"
+#include "multiple_cameras/srv/modify_camera_settings.hpp" 
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 typedef struct css {
     bool opened {true};
-    bool enable_publishing {false};
+    bool enable_publishing {true};
     int height {640};
     int width {480};
     int fps {20};
@@ -16,8 +19,11 @@ class MultipleCameraNode : public rclcpp::Node {
 public:
     MultipleCameraNode() : Node("multiple_camera_node") {
 
-        // Set up service to modify parameters
-        service_ = this->create_service<ModifySettings>("modify_camera_settings", std::bind(&CameraNode::ModifySettings, this, std::placeholders::_1, std::placeholders::_2));
+        service_ = this->create_service<multiple_cameras::srv::ModifyCameraSettings>("modify_camera_settings", std::bind(&MultipleCameraNode::modifyCameraSettings, this, std::placeholders::_1, std::placeholders::_2));
+        pub0_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera0/image/compressed", 10);
+        pub1_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera1/image/compressed", 10);
+        pub2_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera2/image/compressed", 10);
+        pub3_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera3/image/compressed", 10);
 
         // Initialize cameras
         cap0_.open(0);
@@ -46,28 +52,38 @@ public:
 
         // Set up timer to capture and publish images
         if (cap0_settings.opened) {
-            pub0_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera0/image/compressed", 10);
-            cap0_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap0_settings.fps), std::bind(&CameraNode::captureAndPublishImages0, this));
+            cap0_settings.height = cap0_.get(cv::CAP_PROP_FRAME_HEIGHT);
+            cap0_settings.width = cap0_.get(cv::CAP_PROP_FRAME_WIDTH);
+            cap0_.set(cv::CAP_PROP_FPS, float(cap0_settings.fps));
+            cap0_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap0_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages0, this));
         }
 
         if (cap1_settings.opened) {
-            pub1_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera1/image/compressed", 10);
-            cap1_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap1_settings.fps), std::bind(&CameraNode::captureAndPublishImages1, this));
+            cap1_settings.height = cap1_.get(cv::CAP_PROP_FRAME_HEIGHT);
+            cap1_settings.width = cap1_.get(cv::CAP_PROP_FRAME_WIDTH);
+            cap1_.set(cv::CAP_PROP_FPS, float(cap1_settings.fps));
+            cap1_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap1_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages1, this));
         }
 
         if (cap2_settings.opened) {
-            pub2_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera2/image/compressed", 10);
-            cap2_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap2_settings.fps), std::bind(&CameraNode::captureAndPublishImages2, this));
+            cap2_settings.height = cap2_.get(cv::CAP_PROP_FRAME_HEIGHT);
+            cap2_settings.width = cap2_.get(cv::CAP_PROP_FRAME_WIDTH);
+            cap2_.set(cv::CAP_PROP_FPS, float(cap2_settings.fps));            
+            cap2_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap2_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages2, this));
         }
 
         if (cap3_settings.opened) {
-            pub3_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera3/image/compressed", 10);
-            cap3_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap3_settings.fps), std::bind(&CameraNode::captureAndPublishImages3, this));
+            cap3_settings.height = cap3_.get(cv::CAP_PROP_FRAME_HEIGHT);
+            cap3_settings.width = cap3_.get(cv::CAP_PROP_FRAME_WIDTH);
+            cap3_.set(cv::CAP_PROP_FPS, float(cap3_settings.fps));
+            cap3_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap3_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages3, this));
         }
+
+        connection_timer_ = this->create_wall_timer(std::chrono::milliseconds(10000), std::bind(&MultipleCameraNode::checkCameraConnections, this));
     }
 
 private:
-    rclcpp::Service<ModifySettings>::SharedPtr service_;
+    rclcpp::Service<multiple_cameras::srv::ModifyCameraSettings>::SharedPtr service_;
     rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr pub0_;
     rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr pub1_;
     rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr pub2_;
@@ -77,6 +93,7 @@ private:
     rclcpp::TimerBase::SharedPtr cap1_timer_;
     rclcpp::TimerBase::SharedPtr cap2_timer_;
     rclcpp::TimerBase::SharedPtr cap3_timer_;
+    rclcpp::TimerBase::SharedPtr connection_timer_;
 
     cv::VideoCapture cap0_;
     cv::VideoCapture cap1_;
@@ -88,57 +105,113 @@ private:
     camera_settings_struct cap2_settings;
     camera_settings_struct cap3_settings;
 
-    // Modify settings service callback
-    void ModifySettings(const std::shared_ptr<ModifySettings::Request> request, std::shared_ptr<ModifySettings::Response> response) {
+    void checkCameraConnections() {
+        if (!cap0_settings.opened) {
+            cap0_.open(0);
+
+            if (!cap0_.isOpened()) {
+                RCLCPP_INFO(this->get_logger(), "Failed to open camera 0.");
+            } else {
+                cap0_settings.opened = true;
+            }
+        }
+
+        if (!cap1_settings.opened) {
+            cap1_.open(1);
+
+            if (!cap1_.isOpened()) {
+                RCLCPP_INFO(this->get_logger(), "Failed to open camera 1.");
+            } else {
+                cap1_settings.opened = true;
+            }
+        }
+
+        if (!cap2_settings.opened) {
+            cap2_.open(2);
+
+            if (!cap2_.isOpened()) {
+                RCLCPP_INFO(this->get_logger(), "Failed to open camera 2.");
+            } else {
+                cap2_settings.opened = true;
+            }
+        }        
+
+        if (!cap3_settings.opened) {
+            cap3_.open(3);
+
+            if (!cap3_.isOpened()) {
+                RCLCPP_INFO(this->get_logger(), "Failed to open camera 3.");
+            } else {
+                cap3_settings.opened = true;
+            }
+        }
+    }
+
+    bool updateSettingsStruct(camera_settings_struct* cap_settings, const std::shared_ptr<multiple_cameras::srv::ModifyCameraSettings::Request> request, int cap_num) {
+        bool update_fps = false;
+
+        if (request->enable_publishing != cap_settings->enable_publishing) {
+            cap_settings->enable_publishing = request->enable_publishing;
+            RCLCPP_INFO(this->get_logger(), "Publishing camera %i, set to %s", cap_num, cap_settings->enable_publishing ? "true" : "false");
+        }         
+
+        if (request->height != cap_settings->height && request->height > 0) {
+            cap_settings->height = request->height;
+            RCLCPP_INFO(this->get_logger(), "Changed camera %i, height to %li", cap_num, request->height);
+        }
+
+        if (request->width != cap_settings->width && request->width > 0) {
+            cap_settings->width = request->width;
+            RCLCPP_INFO(this->get_logger(), "Changed camera %i, width to %li", cap_num, request->width);
+        }
+
+        if (request->fps != cap_settings->fps && request->fps > 0) {
+            cap_settings->fps = request->fps;
+            RCLCPP_INFO(this->get_logger(), "Changed camera %i, fps to %li", cap_num, request->fps);
+            update_fps = true;
+        }
+        
+        return update_fps;
+    }
+
+    void modifyCameraSettings(const std::shared_ptr<multiple_cameras::srv::ModifyCameraSettings::Request> request, std::shared_ptr<multiple_cameras::srv::ModifyCameraSettings::Response> response) {
         switch (request->camera_id) {
             case 0:
-                cap0_settings.enable_publishing = request->enable_publishing;
-                cap0_settings.height = request->height;
-                cap0_settings.width = request->width;
-                cap0_settings.fps = request->fps;
-                cap0_timer_.cancel();
-                cap0_timer_.reset();
-                cap0_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap0_settings.fps), std::bind(&CameraNode::captureAndPublishImages0, this));
+                if (updateSettingsStruct(&cap0_settings, request, 0)) {
+                    cap0_timer_.reset();
+                    cap0_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap0_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages0, this));
+                }
                 response->success = true;
                 break;
 
             case 1:
-                cap1_settings.enable_publishing = request->enable_publishing;
-                cap1_settings.height = request->height;
-                cap1_settings.width = request->width;
-                cap1_settings.fps = request->fps;
-                cap1_timer_.cancel();
-                cap1_timer_.reset();
-                cap1_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap1_settings.fps), std::bind(&CameraNode::captureAndPublishImages1, this));
+                if (updateSettingsStruct(&cap1_settings, request, 1)) {
+                    cap1_timer_.reset();
+                    cap1_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap1_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages1, this));
+                }
                 response->success = true;
                 break;
 
             case 2:
-                cap2_settings.enable_publishing = request->enable_publishing;
-                cap2_settings.height = request->height;
-                cap2_settings.width = request->width;
-                cap2_settings.fps = request->fps;
-                cap2_timer_.cancel();
-                cap2_timer_.reset();
-                cap2_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap2_settings.fps), std::bind(&CameraNode::captureAndPublishImages2, this));
+                if (updateSettingsStruct(&cap2_settings, request, 2)) {
+                    cap2_timer_.reset();
+                    cap2_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap2_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages2, this));
+                }
                 response->success = true;
                 break;
 
             case 3:
-                cap3_settings.enable_publishing = request->enable_publishing;
-                cap3_settings.height = request->height;
-                cap3_settings.width = request->width;
-                cap3_settings.fps = request->fps;
-                cap3_timer_.cancel();
-                cap3_timer_.reset();
-                cap3_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap3_settings.fps), std::bind(&CameraNode::captureAndPublishImages3, this));
+                if (updateSettingsStruct(&cap3_settings, request, 3)) {
+                    cap3_timer_.reset();
+                    cap3_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap3_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages3, this));
+                }
                 response->success = true;
                 break;
 
             default:
                 response->success = false;
-                break;
-        }        
+                break;   
+       }   
     }
 
     // Capture and publish images
@@ -159,7 +232,7 @@ private:
     }
 
     void publishImageFromCamera(cv::VideoCapture& cap, const rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr& pub, int cap_num, camera_settings_struct& cam_settings) {
-        if (cam_settings->enable_publishing && camera_settings->opened) {
+        if (cam_settings.enable_publishing && cam_settings.opened) {
             sensor_msgs::msg::CompressedImage msg;
             cv::Mat frame;
 
@@ -170,9 +243,9 @@ private:
                 return;
             }
 
-            if (frame.size().height != cam_settings->height || frame.size().width != cam_settings->width) {
+            if (frame.size().height != cam_settings.height || frame.size().width != cam_settings.width) {
                 cv::Mat resized_frame;
-                cv::resize(frame, resized_frame, cv::Size(_cam_settings->width, cam_settings->height), 0, 0, cv::INTER_CUBIC);
+                cv::resize(frame, resized_frame, cv::Size(cam_settings.width, cam_settings.height), 0, 0, cv::INTER_CUBIC);
                 cv::imencode(".jpg", resized_frame, msg.data);
 
             } else {
