@@ -24,8 +24,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 add_executable(multiple_camera_publisher src/multiple_camera_publisher.cpp)
 ament_target_dependencies(multiple_camera_publisher rclcpp std_msgs sensor_msgs cv_bridge image_transport OpenCV multiple_cameras)
 
-add_executable(compressed_to_image_publisher src/compressed_to_image_publisher.cpp)
-ament_target_dependencies(compressed_to_image_publisher rclcpp std_msgs sensor_msgs cv_bridge image_transport OpenCV multiple_cameras)
+add_executable(compressed_to_image_0_publisher src/compressed_to_image_0_publisher.cpp)
+ament_target_dependencies(compressed_to_image_0_publisher rclcpp std_msgs sensor_msgs cv_bridge image_transport OpenCV multiple_cameras)
+
+add_executable(compressed_to_image_2_publisher src/compressed_to_image_2_publisher.cpp)
+ament_target_dependencies(compressed_to_image_2_publisher rclcpp std_msgs sensor_msgs cv_bridge image_transport OpenCV multiple_cameras)
 
 add_executable(modify_camera_settings_client src/modify_camera_settings_client.cpp)
 ament_target_dependencies(modify_camera_settings_client rclcpp multiple_cameras)
@@ -33,7 +36,8 @@ ament_target_dependencies(modify_camera_settings_client rclcpp multiple_cameras)
 
 install(TARGETS
   multiple_camera_publisher
-  compressed_to_image_publisher
+  compressed_to_image_0_publisher
+  compressed_to_image_2_publisher
   modify_camera_settings_client
   DESTINATION lib/${PROJECT_NAME}
 )

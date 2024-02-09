@@ -12,7 +12,8 @@ typedef struct css {
     bool enable_publishing {true};
     int height {640};
     int width {480};
-    int fps {20};
+    int fps {30};
+    int retries {3};
 } camera_settings_struct;
 
 class MultipleCameraNode : public rclcpp::Node {
@@ -79,7 +80,7 @@ public:
             cap3_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / cap3_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages3, this));
         }
 
-        connection_timer_ = this->create_wall_timer(std::chrono::milliseconds(10000), std::bind(&MultipleCameraNode::checkCameraConnections, this));
+        reconnection_timer_ = this->create_wall_timer(std::chrono::milliseconds(10000), std::bind(&MultipleCameraNode::checkCameraConnections, this));
     }
 
 private:
@@ -93,7 +94,7 @@ private:
     rclcpp::TimerBase::SharedPtr cap1_timer_;
     rclcpp::TimerBase::SharedPtr cap2_timer_;
     rclcpp::TimerBase::SharedPtr cap3_timer_;
-    rclcpp::TimerBase::SharedPtr connection_timer_;
+    rclcpp::TimerBase::SharedPtr reconnection_timer_;
 
     cv::VideoCapture cap0_;
     cv::VideoCapture cap1_;
@@ -106,43 +107,51 @@ private:
     camera_settings_struct cap3_settings;
 
     void checkCameraConnections() {
-        if (!cap0_settings.opened) {
+        if (!cap0_settings.opened && cap0_settings.retries > 0) {
             cap0_.open(0);
 
             if (!cap0_.isOpened()) {
-                RCLCPP_INFO(this->get_logger(), "Failed to open camera 0.");
+                RCLCPP_ERROR(this->get_logger(), "Failed to open camera 0, retries left %i", cap0_settings.retries);
+                cap0_settings.retries--;
             } else {
                 cap0_settings.opened = true;
+                cap0_settings.retries = 3;
             }
         }
 
-        if (!cap1_settings.opened) {
+        if (!cap1_settings.opened && cap1_settings.retries > 0) {
             cap1_.open(1);
 
             if (!cap1_.isOpened()) {
-                RCLCPP_INFO(this->get_logger(), "Failed to open camera 1.");
+                RCLCPP_ERROR(this->get_logger(), "Failed to open camera 1, retries left %i", cap1_settings.retries);
+                cap1_settings.retries--;
             } else {
                 cap1_settings.opened = true;
+                cap1_settings.retries = 3;
             }
         }
 
-        if (!cap2_settings.opened) {
+        if (!cap2_settings.opened && cap2_settings.retries > 0) {
             cap2_.open(2);
 
             if (!cap2_.isOpened()) {
-                RCLCPP_INFO(this->get_logger(), "Failed to open camera 2.");
+                RCLCPP_ERROR(this->get_logger(), "Failed to open camera 2, retries left %i", cap2_settings.retries);
+                cap2_settings.retries--;
             } else {
                 cap2_settings.opened = true;
+                cap2_settings.retries = 3;
             }
         }        
 
-        if (!cap3_settings.opened) {
+        if (!cap3_settings.opened && cap3_settings.retries > 0) {
             cap3_.open(3);
 
             if (!cap3_.isOpened()) {
-                RCLCPP_INFO(this->get_logger(), "Failed to open camera 3.");
+                RCLCPP_ERROR(this->get_logger(), "Failed to open camera 3, retries left %i", cap3_settings.retries);
+                cap3_settings.retries--;
             } else {
                 cap3_settings.opened = true;
+                cap3_settings.retries = 3;
             }
         }
     }
