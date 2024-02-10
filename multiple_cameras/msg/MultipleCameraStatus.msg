@@ -1,0 +1,4 @@
+CameraStatus camera_0
+CameraStatus camera_1
+CameraStatus camera_2
+CameraStatus camera_3

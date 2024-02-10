@@ -17,6 +17,8 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(multiple_cameras REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/CameraStatus.msg"
+  "msg/MultipleCameraStatus.msg"
   "srv/ModifyCameraSettings.srv"
   DEPENDENCIES 
 )
