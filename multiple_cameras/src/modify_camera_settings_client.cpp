@@ -12,7 +12,7 @@ int main(int argc, char **argv)
   rclcpp::init(argc, argv);
 
   if (argc != 6) { 
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "usage: modify_camera_settings ID enable_publishing height width fps");      
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Usage: modify_camera_settings ID enable_publishing height width fps");      
     return 1;
   }
 
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 
   auto request = std::make_shared<multiple_cameras::srv::ModifyCameraSettings::Request>();       
   request->camera_id = atoll(argv[1]);
-  request->enable_publishing = true;
+  request->enable_publishing = atoll(argv[2]) > 0 ? true : false;
   request->height = atoll(argv[3]);         
   request->width = atoll(argv[4]);   
   request->fps = atoll(argv[5]);                                                        
@@ -36,9 +36,10 @@ int main(int argc, char **argv)
   }
 
   auto result = client->async_send_request(request);
+
   // Wait for the result.
   if (rclcpp::spin_until_future_complete(node, result) == rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Success: %s", result.get()->success ? "True" : "False");
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Modify camera settings: %s", result.get()->success ? "Success" : "Fail");
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service modify_camera_settings");    
   }
