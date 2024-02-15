@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 
   std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("modify_camera_settings_client");  
   rclcpp::Client<multiple_cameras::srv::ModifyCameraSettings>::SharedPtr client =                
-    node->create_client<multiple_cameras::srv::ModifyCameraSettings>("modify_camera_settings");          
+    node->create_client<multiple_cameras::srv::ModifyCameraSettings>("multiple_camera/modify_camera_settings");          
 
   auto request = std::make_shared<multiple_cameras::srv::ModifyCameraSettings::Request>();       
   request->camera_id = atoll(argv[1]);

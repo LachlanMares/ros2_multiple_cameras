@@ -8,6 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
@@ -35,6 +36,11 @@ ament_target_dependencies(compressed_to_image_2_publisher rclcpp std_msgs sensor
 add_executable(modify_camera_settings_client src/modify_camera_settings_client.cpp)
 ament_target_dependencies(modify_camera_settings_client rclcpp multiple_cameras)
 
+# Export the launch files.
+install(DIRECTORY
+    launch
+    DESTINATION share/${PROJECT_NAME}
+)
 
 install(TARGETS
   multiple_camera_publisher

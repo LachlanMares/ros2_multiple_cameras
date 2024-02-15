@@ -17,75 +17,67 @@ typedef struct css {
     int raw_width {1280};
     int fps {10};
     int retries {3};
+    int dev_id {0};
 } camera_settings_struct;
 
 class MultipleCameraNode : public rclcpp::Node {
 public:
     MultipleCameraNode() : Node("multiple_camera_node") {
         // Publishers
-        _modify_settings_service = this->create_service<multiple_cameras::srv::ModifyCameraSettings>("modify_camera_settings", std::bind(&MultipleCameraNode::modifyCameraSettings, this, std::placeholders::_1, std::placeholders::_2));
-        _camera_0_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera0/image/compressed", 10);
-        _camera_1_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera1/image/compressed", 10);
-        _camera_2_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera2/image/compressed", 10);
-        _camera_3_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>("camera3/image/compressed", 10);
-        _status_msg_publisher = this->create_publisher<multiple_cameras::msg::MultipleCameraStatus>("multiple_camera/status", 10);
+        _modify_settings_service = this->create_service<multiple_cameras::srv::ModifyCameraSettings>(declareAndReadStringParameter("modify_camera_settings_service", "multiple_camera/modify_camera_settings"), std::bind(&MultipleCameraNode::modifyCameraSettings, this, std::placeholders::_1, std::placeholders::_2));
+        _camera_0_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera0_topic", "camera0/image/compressed"), 10);
+        _camera_1_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera1_topic", "camera1/image/compressed"), 10);
+        _camera_2_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera2_topic", "camera2/image/compressed"), 10);
+        _camera_3_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera3_topic", "camera3/image/compressed"), 10);
+        _status_msg_publisher = this->create_publisher<multiple_cameras::msg::MultipleCameraStatus>(declareAndReadStringParameter("multiple_camera_status_topic", "multiple_camera/status"), 10);
+
+        _camera_0_settings.dev_id = declareAndReadIntParameter("camera0_dev_id", 0);
+        _camera_1_settings.dev_id = declareAndReadIntParameter("camera1_dev_id", 1);
+        _camera_2_settings.dev_id = declareAndReadIntParameter("camera2_dev_id", 2);
+        _camera_3_settings.dev_id = declareAndReadIntParameter("camera3_dev_id", 3);
 
         // Initialize cameras
-        _camera_0.open(0);
+        _camera_0.open(_camera_0_settings.dev_id);
         if (!_camera_0.isOpened()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open camera 0.");
             _camera_0_settings.opened = false;
+
+        } else {
+            _camera_0_settings.opened = true;
+            updateCameraSettings(_camera_0, _camera_0_settings);
+            updateTimerSettings(0, false);
         }
                
-        _camera_1.open(1);
+        _camera_1.open(_camera_1_settings.dev_id);
         if (!_camera_1.isOpened()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open camera 1.");
             _camera_1_settings.opened = false;
+
+        } else {
+            _camera_1_settings.opened = true;
+            updateCameraSettings(_camera_1, _camera_1_settings);
+            updateTimerSettings(1, false);   
         }
 
-        _camera_2.open(2);
+        _camera_2.open(_camera_2_settings.dev_id);
         if (!_camera_2.isOpened()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open camera 2.");
             _camera_2_settings.opened = false;
+
+        } else {
+            _camera_2_settings.opened = true;
+            updateCameraSettings(_camera_2, _camera_2_settings);
+            updateTimerSettings(2, false); 
         }
 
-        _camera_3.open(3);
+        _camera_3.open(_camera_3_settings.dev_id);
         if (!_camera_3.isOpened()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open camera 3.");
             _camera_3_settings.opened = false;
-        }
-
-        // Set up timer to capture and publish images
-        if (_camera_0_settings.opened) {
-            _camera_0_settings.height = _camera_0.get(cv::CAP_PROP_FRAME_HEIGHT);
-            _camera_0_settings.width = _camera_0.get(cv::CAP_PROP_FRAME_WIDTH);
-            _camera_0.set(cv::CAP_PROP_FPS, float(_camera_0_settings.fps));
-            getCameraMaxSize(_camera_0, _camera_0_settings);
-            _camera_0_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_0_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages0, this));        
-        }
-
-        if (_camera_1_settings.opened) {
-            _camera_1_settings.height = _camera_1.get(cv::CAP_PROP_FRAME_HEIGHT);
-            _camera_1_settings.width = _camera_1.get(cv::CAP_PROP_FRAME_WIDTH);
-            _camera_1.set(cv::CAP_PROP_FPS, float(_camera_1_settings.fps));
-            getCameraMaxSize(_camera_1, _camera_1_settings);
-            _camera_1_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_1_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages1, this));
-        }
-
-        if (_camera_2_settings.opened) {
-            _camera_2_settings.height = _camera_2.get(cv::CAP_PROP_FRAME_HEIGHT);
-            _camera_2_settings.width = _camera_2.get(cv::CAP_PROP_FRAME_WIDTH);
-            _camera_2.set(cv::CAP_PROP_FPS, float(_camera_2_settings.fps)); 
-            getCameraMaxSize(_camera_2, _camera_2_settings);
-            _camera_2_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_2_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages2, this));
-        }
-
-        if (_camera_3_settings.opened) {
-            _camera_3_settings.height = _camera_3.get(cv::CAP_PROP_FRAME_HEIGHT);
-            _camera_3_settings.width = _camera_3.get(cv::CAP_PROP_FRAME_WIDTH);
-            _camera_3.set(cv::CAP_PROP_FPS, float(_camera_3_settings.fps));
-            getCameraMaxSize(_camera_3, _camera_3_settings);
-            _camera_3_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_3_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages3, this));
+        } else {
+            _camera_3_settings.opened = true;
+            updateCameraSettings(_camera_3, _camera_3_settings);    
+            updateTimerSettings(3, false);  
         }
 
         _reconnection_timer = this->create_wall_timer(std::chrono::milliseconds(10000), std::bind(&MultipleCameraNode::checkCameraConnections, this));
@@ -116,6 +108,24 @@ private:
     camera_settings_struct _camera_1_settings;
     camera_settings_struct _camera_2_settings;
     camera_settings_struct _camera_3_settings;
+
+    std::string declareAndReadStringParameter(std::string param_name, std::string default_value) {
+        this->declare_parameter(param_name, default_value);
+        try {
+            return this->get_parameter(param_name).get_parameter_value().get<std::string>();
+        } catch (...) {
+            return default_value;
+        }
+    }
+
+    int declareAndReadIntParameter(std::string param_name, int default_value) {
+        this->declare_parameter(param_name, default_value);
+        try {
+            return this->get_parameter(param_name).get_parameter_value().get<int>();
+        } catch (...) {
+            return default_value;
+        }
+    }
 
     void sendStatusMessage() {
         multiple_cameras::msg::MultipleCameraStatus sts_msg;
@@ -151,10 +161,44 @@ private:
         _status_msg_publisher->publish(sts_msg);
     }
 
-    void getCameraMaxSize(cv::VideoCapture& cap, camera_settings_struct& cam_settings) {
-        cv::Mat frame;
-        cap >> frame;
+    void updateTimerSettings(int timer_number, bool reset_timer) {
+        switch (timer_number) {
+            case 0:
+                if (reset_timer) {
+                    _camera_0_timer.reset();
+                }
+                _camera_0_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_0_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages0, this));        
+                break;
+            case 1:
+                if (reset_timer) {
+                    _camera_1_timer.reset();
+                }
+                _camera_1_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_1_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages1, this));        
+                break;
+            case 2:
+                if (reset_timer) {
+                    _camera_2_timer.reset();
+                }
+                _camera_2_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_2_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages2, this));        
+                break;
+            case 3:
+                if (reset_timer) {
+                    _camera_3_timer.reset();
+                }
+                _camera_3_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_3_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages3, this));        
+                break;      
+        }                          
+    }
 
+    void updateCameraSettings(cv::VideoCapture& cap, camera_settings_struct& cam_settings) {
+        cv::Mat frame;
+    
+        cam_settings.height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+        cam_settings.width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+        cap.set(cv::CAP_PROP_FPS, float(cam_settings.fps)); 
+        
+        cap >> frame;
+        
         if (!frame.empty()) {
             cam_settings.raw_height = frame.size().height;
             cam_settings.raw_width = frame.size().width;
@@ -165,49 +209,61 @@ private:
 
     void checkCameraConnections() {
         if (!_camera_0_settings.opened && _camera_0_settings.retries > 0) {
-            _camera_0.open(0);
+            _camera_0.open(_camera_0_settings.dev_id);
 
             if (!_camera_0.isOpened()) {
                 RCLCPP_ERROR(this->get_logger(), "Failed to open camera 0, retries left %i", _camera_0_settings.retries);
                 _camera_0_settings.retries--;
+
             } else {
                 _camera_0_settings.opened = true;
+                updateCameraSettings(_camera_0, _camera_0_settings);
+                updateTimerSettings(0, true);
                 _camera_0_settings.retries = 3;
             }
         }
 
         if (!_camera_1_settings.opened && _camera_1_settings.retries > 0) {
-            _camera_1.open(1);
+            _camera_1.open(_camera_1_settings.dev_id);
 
             if (!_camera_1.isOpened()) {
                 RCLCPP_ERROR(this->get_logger(), "Failed to open camera 1, retries left %i", _camera_1_settings.retries);
                 _camera_1_settings.retries--;
+
             } else {
                 _camera_1_settings.opened = true;
+                updateCameraSettings(_camera_1, _camera_1_settings);
+                updateTimerSettings(1, true);
                 _camera_1_settings.retries = 3;
             }
         }
 
         if (!_camera_2_settings.opened && _camera_2_settings.retries > 0) {
-            _camera_2.open(2);
+            _camera_2.open(_camera_2_settings.dev_id);
 
             if (!_camera_2.isOpened()) {
                 RCLCPP_ERROR(this->get_logger(), "Failed to open camera 2, retries left %i", _camera_2_settings.retries);
                 _camera_2_settings.retries--;
+
             } else {
                 _camera_2_settings.opened = true;
+                updateCameraSettings(_camera_2, _camera_2_settings);
+                updateTimerSettings(2, true);
                 _camera_2_settings.retries = 3;
             }
         }        
 
         if (!_camera_3_settings.opened && _camera_3_settings.retries > 0) {
-            _camera_3.open(3);
+            _camera_3.open(_camera_3_settings.dev_id);
 
             if (!_camera_3.isOpened()) {
                 RCLCPP_ERROR(this->get_logger(), "Failed to open camera 3, retries left %i", _camera_3_settings.retries);
                 _camera_3_settings.retries--;
+
             } else {
                 _camera_3_settings.opened = true;
+                updateCameraSettings(_camera_3, _camera_3_settings);
+                updateTimerSettings(3, true);
                 _camera_3_settings.retries = 3;
             }
         }
@@ -262,36 +318,32 @@ private:
         switch (request->camera_id) {
             case 0:
                 if (updateSettingsStruct(&_camera_0_settings, request, 0)) {
-                    _camera_0_timer.reset();                  
                     _camera_0.set(cv::CAP_PROP_FPS, float(_camera_0_settings.fps));
-                    _camera_0_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_0_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages0, this));
+                    updateTimerSettings(0, true);
                 }
                 response->success = true;
                 break;
 
             case 1:
-                if (updateSettingsStruct(&_camera_1_settings, request, 1)) {
-                    _camera_1_timer.reset();                 
+                if (updateSettingsStruct(&_camera_1_settings, request, 1)) {               
                     _camera_1.set(cv::CAP_PROP_FPS, float(_camera_1_settings.fps));
-                    _camera_1_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_1_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages1, this));
+                    updateTimerSettings(1, true);                
                 }
                 response->success = true;
                 break;
 
             case 2:
                 if (updateSettingsStruct(&_camera_2_settings, request, 2)) {
-                    _camera_2_timer.reset();
                     _camera_2.set(cv::CAP_PROP_FPS, float(_camera_2_settings.fps));
-                    _camera_2_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_2_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages2, this));
+                    updateTimerSettings(2, true);                
                 }
                 response->success = true;
                 break;
 
             case 3:
                 if (updateSettingsStruct(&_camera_3_settings, request, 3)) {
-                    _camera_3_timer.reset();
                     _camera_3.set(cv::CAP_PROP_FPS, float(_camera_3_settings.fps));
-                    _camera_3_timer = this->create_wall_timer(std::chrono::milliseconds(1000 / _camera_3_settings.fps), std::bind(&MultipleCameraNode::captureAndPublishImages3, this));
+                    updateTimerSettings(3, true);
                 }
                 response->success = true;
                 break;
@@ -327,7 +379,10 @@ private:
             cap >> frame;
 
             if (frame.empty()) {
-                RCLCPP_ERROR(this->get_logger(), "Failed to capture frame from camera %i.", camera_number);
+                RCLCPP_ERROR(this->get_logger(), "Failed to capture frame from camera %i, resetting", camera_number);
+                cap.release();
+                cam_settings.opened = false;
+                cam_settings.retries = 3;
                 return;
             }
 
