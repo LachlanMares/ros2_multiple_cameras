@@ -25,10 +25,10 @@ public:
     MultipleCameraNode() : Node("multiple_camera_node") {
         // Publishers
         _modify_settings_service = this->create_service<multiple_cameras::srv::ModifyCameraSettings>(declareAndReadStringParameter("modify_camera_settings_service", "multiple_camera/modify_camera_settings"), std::bind(&MultipleCameraNode::modifyCameraSettings, this, std::placeholders::_1, std::placeholders::_2));
-        _camera_0_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera0_topic", "camera0/image/compressed"), 10);
-        _camera_1_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera1_topic", "camera1/image/compressed"), 10);
-        _camera_2_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera2_topic", "camera2/image/compressed"), 10);
-        _camera_3_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera3_topic", "camera3/image/compressed"), 10);
+        _camera_0_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera0_compressed_topic", "camera0/image/compressed"), 10);
+        _camera_1_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera1_compressed_topic", "camera1/image/compressed"), 10);
+        _camera_2_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera2_compressed_topic", "camera2/image/compressed"), 10);
+        _camera_3_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera3_compressed_topic", "camera3/image/compressed"), 10);
         _status_msg_publisher = this->create_publisher<multiple_cameras::msg::MultipleCameraStatus>(declareAndReadStringParameter("multiple_camera_status_topic", "multiple_camera/status"), 10);
 
         _camera_0_settings.dev_id = declareAndReadIntParameter("camera0_dev_id", 0);
