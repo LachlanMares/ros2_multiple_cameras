@@ -13,13 +13,17 @@ def generate_launch_description():
                 {"modify_camera_settings_service": "multiple_camera/modify_camera_settings",
                  "camera0_compressed_topic": "camera0/image/compressed", 
                  "camera0_dev_id": 0, 
+                 "camera0_supported_fps": [5, 10, 20, 30], 
                  "camera1_compressed_topic": "camera1/image/compressed",
                  "camera1_dev_id": 2, 
+                 "camera1_supported_fps": [5, 10, 20, 30], 
                  "camera2_compressed_topic": "camera2/image/compressed",
                  "camera2_dev_id": 4, 
+                 "camera2_supported_fps": [5, 10, 20, 30], 
                  "camera3_compressed_topic": "camera3/image/compressed",
                  "camera3_dev_id": 6, 
-                 "multiple_camera_status_topic": "multiple_camera/status",                
+                 "camera3_supported_fps": [5, 10, 20, 30], 
+                 "multiple_camera_status_topic": "multiple_camera/status",    
                  }
             ]
         )

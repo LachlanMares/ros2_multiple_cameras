@@ -7,6 +7,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <iterator>
 
 typedef struct css {
     bool opened {true};
@@ -18,6 +19,8 @@ typedef struct css {
     int fps {10};
     int retries {3};
     int dev_id {0};
+    std::vector<long int> supported_fps;
+
 } camera_settings_struct;
 
 class MultipleCameraNode : public rclcpp::Node {
@@ -36,6 +39,11 @@ public:
         _camera_2_settings.dev_id = declareAndReadIntParameter("camera2_dev_id", 2);
         _camera_3_settings.dev_id = declareAndReadIntParameter("camera3_dev_id", 3);
 
+        _camera_0_settings.supported_fps = declareAndReadVectorIntParameter("camera0_supported_fps", {5, 10, 20, 30});
+        _camera_1_settings.supported_fps = declareAndReadVectorIntParameter("camera1_supported_fps", {5, 10, 20, 30});
+        _camera_2_settings.supported_fps = declareAndReadVectorIntParameter("camera2_supported_fps", {5, 10, 20, 30});
+        _camera_3_settings.supported_fps = declareAndReadVectorIntParameter("camera3_supported_fps", {5, 10, 20, 30});
+
         // Initialize cameras
         _camera_0.open(_camera_0_settings.dev_id);
         if (!_camera_0.isOpened()) {
@@ -44,7 +52,7 @@ public:
 
         } else {
             _camera_0_settings.opened = true;
-            updateCameraSettings(_camera_0, _camera_0_settings);
+            updateCameraSettings(_camera_0, _camera_0_settings, 0);
             updateTimerSettings(0, false);
         }
                
@@ -55,7 +63,7 @@ public:
 
         } else {
             _camera_1_settings.opened = true;
-            updateCameraSettings(_camera_1, _camera_1_settings);
+            updateCameraSettings(_camera_1, _camera_1_settings, 1);
             updateTimerSettings(1, false);   
         }
 
@@ -66,7 +74,7 @@ public:
 
         } else {
             _camera_2_settings.opened = true;
-            updateCameraSettings(_camera_2, _camera_2_settings);
+            updateCameraSettings(_camera_2, _camera_2_settings, 2);
             updateTimerSettings(2, false); 
         }
 
@@ -76,7 +84,7 @@ public:
             _camera_3_settings.opened = false;
         } else {
             _camera_3_settings.opened = true;
-            updateCameraSettings(_camera_3, _camera_3_settings);    
+            updateCameraSettings(_camera_3, _camera_3_settings, 3);    
             updateTimerSettings(3, false);  
         }
 
@@ -113,6 +121,19 @@ private:
         this->declare_parameter(param_name, default_value);
         try {
             return this->get_parameter(param_name).get_parameter_value().get<std::string>();
+        } catch (...) {
+            return default_value;
+        }
+    }
+
+    std::vector<long int> declareAndReadVectorIntParameter(std::string param_name, std::vector<long int> default_value) {
+        rclcpp::Parameter param;
+
+        this->declare_parameter(param_name, default_value);
+        try {
+            this->get_parameter(param_name, param);          
+            return param.as_integer_array();
+
         } catch (...) {
             return default_value;
         }
@@ -190,12 +211,33 @@ private:
         }                          
     }
 
-    void updateCameraSettings(cv::VideoCapture& cap, camera_settings_struct& cam_settings) {
+    void updateHardwareFps(cv::VideoCapture& cap, camera_settings_struct& cam_settings, int cam_number) {
+        bool hardware_fps_set = false;
+        int len_supported_fps = int(std::size(cam_settings.supported_fps));
+
+        for (int k=0; k<len_supported_fps; k++) {
+            if (cam_settings.supported_fps[k] >= cam_settings.fps) {
+                cap.set(cv::CAP_PROP_FPS, float(cam_settings.supported_fps[k]));
+                RCLCPP_INFO(this->get_logger(), "Camera %i hardware set to %li fps", cam_number, cam_settings.supported_fps[k]);
+                hardware_fps_set = true;
+                break;
+            }
+        }
+
+        if (!hardware_fps_set) {
+            cam_settings.fps = int(cam_settings.supported_fps[len_supported_fps-1]);
+            cap.set(cv::CAP_PROP_FPS, float(cam_settings.supported_fps[len_supported_fps-1]));
+            RCLCPP_INFO(this->get_logger(), "Camera %i reqested fps exceeds supported, set to %li fps", cam_number, cam_settings.supported_fps[len_supported_fps-1]);
+        }
+    }
+
+    void updateCameraSettings(cv::VideoCapture& cap, camera_settings_struct& cam_settings, int cam_number) {
         cv::Mat frame;
-    
+        
         cam_settings.height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
         cam_settings.width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-        cap.set(cv::CAP_PROP_FPS, float(cam_settings.fps)); 
+
+        updateHardwareFps(cap, cam_settings, cam_number);
         
         cap >> frame;
         
@@ -217,7 +259,7 @@ private:
 
             } else {
                 _camera_0_settings.opened = true;
-                updateCameraSettings(_camera_0, _camera_0_settings);
+                updateCameraSettings(_camera_0, _camera_0_settings, 0);
                 updateTimerSettings(0, true);
                 _camera_0_settings.retries = 3;
             }
@@ -232,7 +274,7 @@ private:
 
             } else {
                 _camera_1_settings.opened = true;
-                updateCameraSettings(_camera_1, _camera_1_settings);
+                updateCameraSettings(_camera_1, _camera_1_settings, 1);
                 updateTimerSettings(1, true);
                 _camera_1_settings.retries = 3;
             }
@@ -247,7 +289,7 @@ private:
 
             } else {
                 _camera_2_settings.opened = true;
-                updateCameraSettings(_camera_2, _camera_2_settings);
+                updateCameraSettings(_camera_2, _camera_2_settings, 2);
                 updateTimerSettings(2, true);
                 _camera_2_settings.retries = 3;
             }
@@ -262,7 +304,7 @@ private:
 
             } else {
                 _camera_3_settings.opened = true;
-                updateCameraSettings(_camera_3, _camera_3_settings);
+                updateCameraSettings(_camera_3, _camera_3_settings, 3);
                 updateTimerSettings(3, true);
                 _camera_3_settings.retries = 3;
             }
@@ -318,15 +360,15 @@ private:
         switch (request->camera_id) {
             case 0:
                 if (updateSettingsStruct(&_camera_0_settings, request, 0)) {
-                    _camera_0.set(cv::CAP_PROP_FPS, float(_camera_0_settings.fps));
+                    updateHardwareFps(_camera_0, _camera_0_settings, 0);
                     updateTimerSettings(0, true);
                 }
                 response->success = true;
                 break;
 
             case 1:
-                if (updateSettingsStruct(&_camera_1_settings, request, 1)) {               
-                    _camera_1.set(cv::CAP_PROP_FPS, float(_camera_1_settings.fps));
+                if (updateSettingsStruct(&_camera_1_settings, request, 1)) {  
+                    updateHardwareFps(_camera_1, _camera_1_settings, 1);             
                     updateTimerSettings(1, true);                
                 }
                 response->success = true;
@@ -334,7 +376,7 @@ private:
 
             case 2:
                 if (updateSettingsStruct(&_camera_2_settings, request, 2)) {
-                    _camera_2.set(cv::CAP_PROP_FPS, float(_camera_2_settings.fps));
+                    updateHardwareFps(_camera_2, _camera_2_settings, 2);
                     updateTimerSettings(2, true);                
                 }
                 response->success = true;
@@ -342,7 +384,7 @@ private:
 
             case 3:
                 if (updateSettingsStruct(&_camera_3_settings, request, 3)) {
-                    _camera_3.set(cv::CAP_PROP_FPS, float(_camera_3_settings.fps));
+                    updateHardwareFps(_camera_3, _camera_3_settings, 3);
                     updateTimerSettings(3, true);
                 }
                 response->success = true;
