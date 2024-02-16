@@ -1,4 +1,13 @@
+/*
+Author:
+    Lachlan Mares, lachlan.mares@gmail.com
 
+License:
+    GPL-3.0
+
+Description:
+
+*/
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/compressed_image.hpp"
 #include "sensor_msgs/image_encodings.hpp"
@@ -7,7 +16,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <iterator>
+
 
 typedef struct css {
     bool opened {true};
@@ -34,17 +43,19 @@ public:
         _camera_3_publisher = this->create_publisher<sensor_msgs::msg::CompressedImage>(declareAndReadStringParameter("camera3_compressed_topic", "camera3/image/compressed"), 10);
         _status_msg_publisher = this->create_publisher<multiple_cameras::msg::MultipleCameraStatus>(declareAndReadStringParameter("multiple_camera_status_topic", "multiple_camera/status"), 10);
 
+        // Get camera device id from their ROS2 Parameters, should corespond to /dev/video{x}
         _camera_0_settings.dev_id = declareAndReadIntParameter("camera0_dev_id", 0);
         _camera_1_settings.dev_id = declareAndReadIntParameter("camera1_dev_id", 1);
         _camera_2_settings.dev_id = declareAndReadIntParameter("camera2_dev_id", 2);
         _camera_3_settings.dev_id = declareAndReadIntParameter("camera3_dev_id", 3);
 
+        // Get supported fps settings for the cameras, opencv cap.set(cv::CAP_PROP_FPS, fps) 
         _camera_0_settings.supported_fps = declareAndReadVectorIntParameter("camera0_supported_fps", {5, 10, 20, 30});
         _camera_1_settings.supported_fps = declareAndReadVectorIntParameter("camera1_supported_fps", {5, 10, 20, 30});
         _camera_2_settings.supported_fps = declareAndReadVectorIntParameter("camera2_supported_fps", {5, 10, 20, 30});
         _camera_3_settings.supported_fps = declareAndReadVectorIntParameter("camera3_supported_fps", {5, 10, 20, 30});
 
-        // Initialize cameras
+        // Initialize individual cameras
         _camera_0.open(_camera_0_settings.dev_id);
         if (!_camera_0.isOpened()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open camera 0.");
@@ -88,6 +99,7 @@ public:
             updateTimerSettings(3, false);  
         }
 
+        // Start timers
         _reconnection_timer = this->create_wall_timer(std::chrono::milliseconds(10000), std::bind(&MultipleCameraNode::checkCameraConnections, this));
         _status_message_timer = this->create_wall_timer(std::chrono::milliseconds(2000), std::bind(&MultipleCameraNode::sendStatusMessage, this));
     }
@@ -119,6 +131,7 @@ private:
 
     std::string declareAndReadStringParameter(std::string param_name, std::string default_value) {
         this->declare_parameter(param_name, default_value);
+
         try {
             return this->get_parameter(param_name).get_parameter_value().get<std::string>();
         } catch (...) {
@@ -128,8 +141,8 @@ private:
 
     std::vector<long int> declareAndReadVectorIntParameter(std::string param_name, std::vector<long int> default_value) {
         rclcpp::Parameter param;
-
         this->declare_parameter(param_name, default_value);
+
         try {
             this->get_parameter(param_name, param);          
             return param.as_integer_array();
@@ -141,6 +154,7 @@ private:
 
     int declareAndReadIntParameter(std::string param_name, int default_value) {
         this->declare_parameter(param_name, default_value);
+
         try {
             return this->get_parameter(param_name).get_parameter_value().get<int>();
         } catch (...) {
@@ -215,6 +229,7 @@ private:
         bool hardware_fps_set = false;
         int len_supported_fps = int(std::size(cam_settings.supported_fps));
 
+        // Search through supported hardware fps 
         for (int k=0; k<len_supported_fps; k++) {
             if (cam_settings.supported_fps[k] >= cam_settings.fps) {
                 cap.set(cv::CAP_PROP_FPS, float(cam_settings.supported_fps[k]));
@@ -224,6 +239,7 @@ private:
             }
         }
 
+        // Check to see if hardware fps has been set, clip to max
         if (!hardware_fps_set) {
             cam_settings.fps = int(cam_settings.supported_fps[len_supported_fps-1]);
             cap.set(cv::CAP_PROP_FPS, float(cam_settings.supported_fps[len_supported_fps-1]));
@@ -234,13 +250,16 @@ private:
     void updateCameraSettings(cv::VideoCapture& cap, camera_settings_struct& cam_settings, int cam_number) {
         cv::Mat frame;
         
+        // Get default image height and width
         cam_settings.height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
         cam_settings.width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
 
+        // Set hardware fps it needs to be >= requested fps value
         updateHardwareFps(cap, cam_settings, cam_number);
         
         cap >> frame;
         
+        // Read a single frame to get actual size
         if (!frame.empty()) {
             cam_settings.raw_height = frame.size().height;
             cam_settings.raw_width = frame.size().width;
@@ -250,6 +269,7 @@ private:
     }
 
     void checkCameraConnections() {
+        // Function to automatically re-connect cameras
         if (!_camera_0_settings.opened && _camera_0_settings.retries > 0) {
             _camera_0.open(_camera_0_settings.dev_id);
 
@@ -321,7 +341,7 @@ private:
 
         if (request->height != camera_settings->height) {
             if (request->height <= 0) {
-                RCLCPP_ERROR(this->get_logger(), "Requested height of %li for camera %i is dumb think harder next time", request->height, camera_number);
+                RCLCPP_ERROR(this->get_logger(), "Requested height of %li for camera %i is dumb, think harder next time", request->height, camera_number);
             
             } else { 
                 if (request->height != camera_settings->raw_height) { 
@@ -335,7 +355,7 @@ private:
 
         if (request->width != camera_settings->width) {
             if (request->width <= 0) {
-                RCLCPP_ERROR(this->get_logger(), "Requested width of %li for camera %i is dumb think harder next time", request->width, camera_number);
+                RCLCPP_ERROR(this->get_logger(), "Requested width of %li for camera %i is dumb, think harder next time", request->width, camera_number);
             
             } else {
                 if (request->width != camera_settings->raw_width) { 
@@ -347,10 +367,15 @@ private:
             }
         }
 
-        if (request->fps != camera_settings->fps && request->fps > 0) {
-            camera_settings->fps = request->fps;
-            RCLCPP_INFO(this->get_logger(), "Changed camera %i, fps to %li", camera_number, request->fps);
-            update_fps = true;
+        if (request->fps != camera_settings->fps) {
+            if (request->fps <= 0) {
+                RCLCPP_ERROR(this->get_logger(), "Request an int value greater than zero for camera %i fps you dunce!", camera_number);
+            
+            } else {
+                camera_settings->fps = request->fps;
+                RCLCPP_INFO(this->get_logger(), "Changed camera %i, fps to %li", camera_number, request->fps);
+                update_fps = true;
+            }
         }
         
         return update_fps;

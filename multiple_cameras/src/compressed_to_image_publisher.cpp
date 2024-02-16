@@ -1,3 +1,14 @@
+/*
+Author:
+    Lachlan Mares, lachlan.mares@gmail.com
+
+License:
+    GPL-3.0
+
+Description:
+
+*/
+
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
