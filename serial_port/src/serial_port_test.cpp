@@ -1,0 +1,35 @@
+/*
+Author:
+    Lachlan Mares, lachlan.mares@gmail.com
+
+License:
+    GPL-3.0
+
+Description:
+
+*/
+
+#include <rclcpp/rclcpp.hpp>
+#include <chrono>
+#include <thread>
+#include "SerialPort.hpp"
+
+using namespace sp::CppLinuxSerial;
+
+class SerialPortTester : public rclcpp::Node {
+    public:
+        SerialPortTester() : Node("serial_port_test_node") {
+            BaudRate baud = sp::CppLinuxSerial::BaudRate::B_1200;
+        }
+
+    private:
+
+};
+
+int main(int argc, char** argv) {
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<SerialPortTester>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
+    return 0;
+}
