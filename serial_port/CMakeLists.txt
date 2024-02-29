@@ -17,10 +17,10 @@ include_directories(
 add_executable(serial_port_test src/serial_port_test.cpp)
 ament_target_dependencies(serial_port_test rclcpp)
 
-install(DIRECTORY
-    launch
-    DESTINATION share/${PROJECT_NAME}
-)
+# install(DIRECTORY
+#     launch
+#     DESTINATION share/${PROJECT_NAME}
+# )
 
 install(TARGETS
   serial_port_test

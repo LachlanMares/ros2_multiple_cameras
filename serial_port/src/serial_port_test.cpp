@@ -14,22 +14,24 @@ Description:
 #include <thread>
 #include "SerialPort.hpp"
 
-using namespace sp::CppLinuxSerial;
+using namespace sp;
 
 class SerialPortTester : public rclcpp::Node {
     public:
         SerialPortTester() : Node("serial_port_test_node") {
-            BaudRate baud = sp::CppLinuxSerial::BaudRate::B_1200;
+            SerialPort serialPort = SerialPort("/dev/ttyACM0", BaudRate::B_57600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+            serialPort.Open();
         }
 
     private:
-
+        
 };
 
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<SerialPortTester>();
-    rclcpp::spin(node);
+
+    rclcpp::spin(node); 
     rclcpp::shutdown();
     return 0;
 }
