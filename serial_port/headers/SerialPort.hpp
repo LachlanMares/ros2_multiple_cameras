@@ -161,31 +161,34 @@ namespace sp {
                     ConfigureTermios();
             };
 
-            void Open()
+            bool Open()
             {
+                bool retVal = false;
                 if(device_.empty()) {
-                    std::cout << "Attempted to open file when file path has not been assigned to." << "\n"; 
-                
+                    std::cout << "Attempted to open file when file path has not been assigned to." << std::endl; 
+
                 } else {
                     // O_RDONLY for read-only, O_WRONLY for write only, O_RDWR for both read/write access
                     fileDesc_ = open(device_.c_str(), O_RDWR);
 
                     // Check status
                     if(fileDesc_ == -1) {
-                        std::cout << "Could not open device " << device_ << ". Is the device name correct and do you have read/write permissions?";
-                    
+                        std::cout << "Could not open device " << device_ << ". Is the device name correct and do you have read/write permissions?" << std::endl;
+
                     } else {
                         ConfigureTermios();
                         state_ = State::OPEN;
+                        retVal = true;
                     }
                 }
+                return retVal;
             };
 
             void Close() {
                 if(fileDesc_ != -1) {
                     auto retVal = close(fileDesc_);
                     if(retVal != 0) {
-                        std::cout << "Tried to close serial port " << device_ << ", but close() failed.";
+                        std::cout << "Tried to close serial port " << device_ << ", but close() failed." << std::endl;
                     }
                     fileDesc_ = -1;
                 }
@@ -199,13 +202,13 @@ namespace sp {
 
             void SetTimeout(int32_t timeout_ms) {
                 if(timeout_ms < -1)
-                    std::cout << "timeout_ms provided to " << device_ << " was < -1, which is invalid.";
+                    std::cout << "timeout_ms provided to " << device_ << " was < -1, which is invalid." << std::endl;
 
                 if(timeout_ms > 25500)
-                    std::cout << "timeout_ms provided to " << device_ << " was > 25500, which is invalid.";
+                    std::cout << "timeout_ms provided to " << device_ << " was > 25500, which is invalid." << std::endl;
 
                 if(state_ == State::OPEN)
-                    std::cout << device_ << " called while state == OPEN.";
+                    std::cout << device_ << " called while state == OPEN." << std::endl;
 
                 timeout_ms_ = timeout_ms;
             };
@@ -340,7 +343,7 @@ namespace sp {
                         tty.c_cflag |= CS8;
                         break;
                     default:
-                        std::cout << "numDataBits value not supported!";
+                        std::cout << "numDataBits value not supported!" << std::endl;
                 }
 
                 // Parity 
@@ -357,7 +360,7 @@ namespace sp {
                         tty.c_cflag	|= PARODD;
                         break;
                     default:
-                        std::cout << "parity value not supported!";
+                        std::cout << "parity value not supported!" << std::endl;
                 }
 
                 // Stop bits
@@ -369,7 +372,7 @@ namespace sp {
                         tty.c_cflag |= CSTOPB;
                         break;
                     default:
-                        std::cout << "numStopBits value not supported!";
+                        std::cout << "numStopBits value not supported!" << std::endl;
                 }
 
                 // Flow control
@@ -467,7 +470,7 @@ namespace sp {
                             tty.c_ospeed = 460800;
                             break;
                         default:
-                            std::cout << "baudRate passed to " << device_ << " unrecognized.";
+                            std::cout << "baudRate passed to " << device_ << " unrecognized." << std::endl;
                     }
 
                 } else {
@@ -544,12 +547,12 @@ namespace sp {
             bool PortIsOpened() {
                 bool port_open = true;
                 if(state_ != State::OPEN) {
-                    std::cout <<  device_ << " called but state != OPEN. Please call Open() first.";
+                    std::cout <<  device_ << " called but state != OPEN. Please call Open() first." << std::endl;
                     port_open = false;
                 }
 
                 if(fileDesc_ < 0) {
-                    std::cout << " called but file descriptor < 0, indicating file has not been opened.";
+                    std::cout << " called but file descriptor < 0, indicating file has not been opened." << std::endl;
                     port_open = false;
                 }
 

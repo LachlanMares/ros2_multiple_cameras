@@ -15,12 +15,46 @@ Description:
 #include "SerialPort.hpp"
 
 using namespace sp;
+using namespace std::chrono_literals;
 
 class SerialPortTester : public rclcpp::Node {
     public:
         SerialPortTester() : Node("serial_port_test_node") {
-            SerialPort serialPort = SerialPort("/dev/ttyACM0", BaudRate::B_57600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
-            serialPort.Open();
+            SerialPort serialPort = SerialPort("/dev/ttyUSB0", BaudRate::B_57600, NumDataBits::EIGHT, Parity::NONE, NumStopBits::ONE);
+            serialPort.SetTimeout(1000);
+
+            if (!serialPort.Open()) {
+                RCLCPP_ERROR(this->get_logger(), "Failed to open serial port.");
+
+            } else {
+
+                std::this_thread::sleep_for(100ms);
+
+                std::thread t1([&]() {
+                    // Do Something
+                    for (int x = 0; x < 10; x++) {
+                        std::cout << "Reading" << std::endl;
+                        std::string readData;
+                        serialPort.Read(readData);
+                        std::cout << "readData: " << readData << std::endl;
+                    }
+                });
+
+                std::thread t2([&]() {
+                    // Do Something
+                    std::this_thread::sleep_for(100ms);
+                    for (int x = 0; x < 10; x++) {
+                        std::this_thread::sleep_for(100ms);
+                        std::cout << "Writing \"Hello\"" << std::endl;
+                        serialPort.Write("Hello");
+                    }
+                });
+
+                t1.join();
+                t2.join();
+                
+                serialPort.Close();
+            }
         }
 
     private:
