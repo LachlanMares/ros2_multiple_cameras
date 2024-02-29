@@ -161,8 +161,7 @@ namespace sp {
                     ConfigureTermios();
             };
 
-            bool Open()
-            {
+            bool Open() {
                 bool retVal = false;
                 if(device_.empty()) {
                     std::cout << "Attempted to open file when file path has not been assigned to." << std::endl; 
@@ -214,11 +213,11 @@ namespace sp {
             };
 
             int32_t Available() {
+                int32_t ret = 0;
                 if (PortIsOpened()) {
-                    int32_t ret = 0;
                     ioctl(fileDesc_, FIONREAD, &ret);
-                    return ret;
                 }
+                return ret;
             };
   
             bool GetState() {
@@ -480,8 +479,8 @@ namespace sp {
                     tty.c_ospeed = baudRate_;
                 }
 
-                tty.c_oflag     =   0;              // No remapping, no delays
-                tty.c_oflag     &=  ~OPOST;         // Make raw
+                tty.c_oflag = 0;              // No remapping, no delays
+                tty.c_oflag &= ~OPOST;         // Make raw
 
                 //================= CONTROL CHARACTERS (.c_cc[]) ==================//
 

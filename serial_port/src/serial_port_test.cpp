@@ -35,6 +35,9 @@ class SerialPortTester : public rclcpp::Node {
                     for (int x = 0; x < 10; x++) {
                         std::cout << "Reading" << std::endl;
                         std::string readData;
+                        while (serialPort.Available() <= 1) {
+                            std::this_thread::sleep_for(10ms);
+                        }
                         serialPort.Read(readData);
                         std::cout << "readData: " << readData << std::endl;
                     }
@@ -65,7 +68,7 @@ int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<SerialPortTester>();
 
-    rclcpp::spin(node); 
+    // rclcpp::spin(node); 
     rclcpp::shutdown();
     return 0;
 }
