@@ -30,16 +30,42 @@ class SerialPortTester : public rclcpp::Node {
 
                 std::this_thread::sleep_for(100ms);
 
+                // std::thread t1([&]() {
+                //     // Do Something
+                //     for (int x = 0; x < 10; x++) {
+                //         std::cout << "Reading" << std::endl;
+                //         std::string readData;
+                //         while (serialPort.Available() <= 1) {
+                //             std::this_thread::sleep_for(10ms);
+                //         }
+                //         serialPort.Read(readData);
+                //         std::cout << "readData: " << readData << std::endl;
+                //     }
+                // });
+
+                // std::thread t2([&]() {
+                //     // Do Something
+                //     std::this_thread::sleep_for(100ms);
+                //     for (int x = 0; x < 10; x++) {
+                //         std::this_thread::sleep_for(100ms);
+                //         std::cout << "Writing \"Hello\"" << std::endl;
+                //         serialPort.Write("Hello");
+                //         serialPort.WriteBinaryAT({0, 0});
+                //     }
+                // });
+
                 std::thread t1([&]() {
                     // Do Something
                     for (int x = 0; x < 10; x++) {
                         std::cout << "Reading" << std::endl;
-                        std::string readData;
-                        while (serialPort.Available() <= 1) {
-                            std::this_thread::sleep_for(10ms);
+                        std::vector<uint8_t> readData;
+                        serialPort.ReadBinaryAT(readData);
+                        std::string dataString = "";
+
+                        for (uint32_t i=0; i<readData.size(); i++) {
+                            dataString += std::to_string(readData[i]) + " ";
                         }
-                        serialPort.Read(readData);
-                        std::cout << "readData: " << readData << std::endl;
+                        std::cout << "readData: " << dataString << std::endl;
                     }
                 });
 
@@ -48,8 +74,8 @@ class SerialPortTester : public rclcpp::Node {
                     std::this_thread::sleep_for(100ms);
                     for (int x = 0; x < 10; x++) {
                         std::this_thread::sleep_for(100ms);
-                        std::cout << "Writing \"Hello\"" << std::endl;
-                        serialPort.Write("Hello");
+                        std::cout << "Writing \"0 1 2 3\"" << std::endl;
+                        serialPort.WriteBinaryAT({0, 1, 2, 3});
                     }
                 });
 

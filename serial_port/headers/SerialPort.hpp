@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <iterator>
 
+using namespace std::chrono_literals;
+
 namespace sp {
     enum BaudRateType {
         STANDARD = 0,
@@ -248,26 +250,30 @@ namespace sp {
                 }
             };
 
+            void WriteBinaryAT(const std::vector<uint8_t>& data) {
+                if (PortIsOpened()) {
+                    std::vector<uint8_t> msgData = {STX, (uint8_t)(data.size() + 1)};                   
+                    
+                    for (uint32_t i=0; i<data.size(); i++) {
+                        msgData.push_back(data[i]);
+                    }
+
+                    msgData.push_back(ETX);
+
+                    int writeResult = write(fileDesc_, msgData.data(), msgData.size());
+
+                    if (writeResult == -1) {
+                        throw std::system_error(EFAULT, std::system_category());
+                    }
+                }
+            };
+
             void Read(std::string& data) {
                 if (PortIsOpened()) {
 
                     ssize_t n = read(fileDesc_, &readBuffer_[0], readBufferSize_B_);
 
-                    // Error Handling
-                    if(n < 0) {
-                        // Read was unsuccessful
-                        throw std::system_error(EFAULT, std::system_category());
-                    
-                    } else if(n == 0) {
-                        // n == 0 means EOS, but also returned on device disconnection. We try to get termios2 to distinguish two these two states
-                        struct termios2 term2;
-                        int rv = ioctl(fileDesc_, TCGETS2, &term2);
-
-                        if(rv != 0) {
-                            throw std::system_error(EFAULT, std::system_category());
-                        }
-                    
-                    } else if(n > 0) {
+                    } if (CheckForReadError(n)) {
                         data += std::string(&readBuffer_[0], n);
                     }
                 }
@@ -275,28 +281,39 @@ namespace sp {
 
             void ReadBinary(std::vector<uint8_t>& data) {
                 if (PortIsOpened()) {
+                    
                     ssize_t n = read(fileDesc_, &readBuffer_[0], readBufferSize_B_);
 
-                    // Error Handling
-                    if(n < 0) {
-                        // Read was unsuccessful
-                        throw std::system_error(EFAULT, std::system_category());
-
-                    } else if(n == 0) {
-                        // n == 0 means EOS, but also returned on device disconnection. We try to get termios2 to distinguish two these two states
-                        struct termios2 term2;
-                        int rv = ioctl(fileDesc_, TCGETS2, &term2);
-
-                        if(rv != 0) {
-                            throw std::system_error(EFAULT, std::system_category());
-                        }
-
-                    } else if(n > 0) {
+                    if (CheckForReadError(n)) {
                         std::copy(readBuffer_.begin(), readBuffer_.begin() + n, back_inserter(data));
                     }
                 }
             };
     
+            void ReadBinaryAT(std::vector<uint8_t>& data) {
+                if (PortIsOpened()) {
+                    
+                    while (Available() <= 1) {
+                        std::this_thread::sleep_for(10ms);
+                    }
+
+                    uint8_t stxByte, lenByte;
+                    std::vector<uint8_t> msgData;
+
+                    if (CheckForReadError(read(fileDesc_, &stxByte, 1))) {
+                        if (stxByte == STX) {
+                            if (CheckForReadError(read(fileDesc_, &lenByte, 1))) {
+                                if (CheckForReadError(read(fileDesc_, &readBuffer_[0], lenByte))) {
+                                    if (readBuffer_[lenByte-1] == ETX) {
+                                        std::copy(readBuffer_.begin(), readBuffer_.begin() + (lenByte - 1), back_inserter(data));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
         private:
             bool state_ = false;
             bool echo_ = false;
@@ -320,6 +337,8 @@ namespace sp {
             static constexpr int defaultBaudRate_ = BaudRate::B_57600;
             static constexpr int32_t defaultTimeout_ms_ = -1;
             static constexpr unsigned char defaultReadBufferSize_B_ = 255;
+            static constexpr unsigned char STX = 0x02;
+            static constexpr unsigned char ETX = 0x03;
 
             void ConfigureTermios()
             {
@@ -556,6 +575,27 @@ namespace sp {
                 }
 
                 return port_open;
+            }
+
+            bool CheckForReadError(ssize_t n) {
+                bool retVal = true;
+
+                if(n < 0) {
+                    // Read was unsuccessful
+                    throw std::system_error(EFAULT, std::system_category());
+                    retVal = false;
+
+                } else if(n == 0) {
+                    // n == 0 means EOS, but also returned on device disconnection. We try to get termios2 to distinguish two these two states
+                    struct termios2 term2;
+                    int rv = ioctl(fileDesc_, TCGETS2, &term2);
+
+                    if(rv != 0) {
+                        throw std::system_error(EFAULT, std::system_category());
+                        retVal = false;
+                    }
+                } 
+                return retVal;
             }
 
             int GetBaudRateType(int baudRate) {
