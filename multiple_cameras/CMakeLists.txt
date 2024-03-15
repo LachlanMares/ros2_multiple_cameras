@@ -7,6 +7,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -23,6 +24,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ModifyCameraSettings.srv"
   DEPENDENCIES 
 )
+
+include_directories(include)
 
 add_executable(multiple_camera_publisher src/multiple_camera_publisher.cpp)
 ament_target_dependencies(multiple_camera_publisher rclcpp std_msgs sensor_msgs cv_bridge image_transport OpenCV multiple_cameras)
@@ -43,6 +46,15 @@ install(TARGETS
   multiple_camera_publisher
   compressed_to_image_publisher
   modify_camera_settings_client
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME})
+
+# Install Python executables
+install(PROGRAMS
+  scripts/multiple_camera_publisher_python.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
