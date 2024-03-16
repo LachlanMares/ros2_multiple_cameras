@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'multiple_camera_publisher = multiple_cameras.multiple_camera_publisher_python:main',
+            'multiple_camera_publisher = multiple_cameras.compressed_to_image_publisher_python:main',
         ],
     },
 )

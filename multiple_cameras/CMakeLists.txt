@@ -55,6 +55,7 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/multiple_camera_publisher_python.py
+  scripts/compressed_to_image_publisher_python.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
