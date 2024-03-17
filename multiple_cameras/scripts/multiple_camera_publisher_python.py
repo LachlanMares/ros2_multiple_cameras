@@ -41,8 +41,9 @@ class USBCamera:
             
             if ret:
                 im_shape = self.latest_image.shape
-                self.camera_settings["height"] = config["height"]
-                self.camera_settings["width"] = config["width"]
+
+                self.camera_settings["height"] = config["height"] if "height" in config.keys() else im_shape[0]
+                self.camera_settings["width"] = config["width"] if "width" in config.keys() else im_shape[1]
                 self.camera_settings["raw_height"] = im_shape[0]
                 self.camera_settings["raw_width"] = im_shape[1]
                 self.camera_settings["hardware_fps"] = self.cap.get(cv2.CAP_PROP_FPS)
@@ -55,18 +56,8 @@ class USBCamera:
 
                 if config["hardware_supports_fps_change"]:  # Not all USB cameras do
                     self.camera_settings["supported_fps"] = config["supported_fps"]
+                    self.configure_hardware_fps(fps=config["fps"])
 
-                    if self.camera_settings["hardware_fps"] != config["fps"]:
-                         for supported_fps in self.camera_settings["supported_fps"]:
-                            if supported_fps >= config["fps"] and not fps_set:
-                                self.cap.set(cv2.CAP_PROP_FPS, float(supported_fps))
-                                self.camera_settings["hardware_fps"] = supported_fps
-                                fps_set = True 
-                    
-                    if not fps_set:
-                        self.cap.set(cv2.CAP_PROP_FPS, float(config["supported_fps"][-1]))
-                        self.camera_settings["hardware_fps"] = config["supported_fps"][-1]
-            
                 self.camera_settings["running"] = True
                 
         return self.camera_settings["running"] 
@@ -98,105 +89,123 @@ class USBCamera:
 
         return valid, latest_image
 
-    def configure_camera(self):
+    def configure_hardware_fps(self, fps: int):
+        fps_set = False
+
+        if self.camera_settings["hardware_fps"] != fps:
+            for supported_fps in self.camera_settings["supported_fps"]:
+                if supported_fps >= fps and not fps_set:
+                    self.cap.set(cv2.CAP_PROP_FPS, float(supported_fps))
+                    self.camera_settings["hardware_fps"] = supported_fps
+                    fps_set = True 
+
+        if not fps_set:
+            self.cap.set(cv2.CAP_PROP_FPS, float(self.camera_settings["supported_fps"][-1]))
+            self.camera_settings["hardware_fps"] = self.camera_settings["supported_fps"][-1]
+
+    def configure_image_size(self):
         if self.camera_settings["height"] != self.camera_settings["raw_height"] or self.camera_settings["width"] != self.camera_settings["raw_width"]:
             self.camera_settings["resize"] = True
         else:
             self.camera_settings["resize"] = False
-
-        return True
 
 
 class MultipleCameraPublisher(Node):
 
     def __init__(self):
         super().__init__('multiple_camera_node')
-        self.modify_camera_service = self.create_service(ModifyCameraSettings, 'multiple_camera/modify_camera_settings', self.modify_camera_settings_callback)       
+        self.modify_camera_service = self.create_service(ModifyCameraSettings, 
+                                                         self.string_parameter("modify_camera_settings_service", "multiple_camera/modify_camera_settings"), 
+                                                         self.modify_camera_settings_callback)       
         
         self.bridge = CvBridge()
 
-        self.camera0 = USBCamera(0)
-        self.camera0_fps = 10
-        self.camera0_image_shape = [480, 640]
+        self.camera0 = USBCamera(self.int_parameter("camera0/dev_id", 0))
+        self.camera0_fps = self.int_parameter("camera0/fps", 10)
         self.camera0_exists = False
         self.get_logger().info(f"Initialising camera 0")
 
         if self.camera0.initialise_camera(config={
-            "height": self.camera0_image_shape[0],
-            "width": self.camera0_image_shape[1],
             "fps": self.camera0_fps,
+            "height": self.int_parameter("camera0/height", 720),
+            "width": self.int_parameter("camera0/width", 1080),
             "supported_fps": [],
             "hardware_supports_fps_change": False,
             "enable_publishing": True,
             }):
            
-            self.camera0_publisher = self.create_publisher(CompressedImage, 'camera0/image/compressed', 10)
+            self.camera0_publisher = self.create_publisher(CompressedImage, 
+                                                           self.string_parameter("camera0_compressed_topic", "camera0/image/compressed"), 
+                                                           10)
             self.camera0_timer = self.create_timer(1/self.camera0_fps, self.camera0_timer_callback)
             self.get_logger().info("Camera 0 is ready....")
    
         else:
             self.get_logger().info("Camera 0 is dead....")
 
-        self.camera1 = USBCamera(1)
-        self.camera1_fps = 10
-        self.camera1_image_shape = [480, 640]
+        self.camera1 = USBCamera(self.int_parameter("camera1/dev_id", 1))
+        self.camera1_fps = self.int_parameter("camera1/fps", 10)
         self.camera1_exists = False
         self.get_logger().info(f"Initialising camera 1")
         
         if self.camera1.initialise_camera(config={
-            "height": self.camera1_image_shape[0],
-            "width": self.camera1_image_shape[1],
             "fps": self.camera1_fps,
+            "height": self.int_parameter("camera1/height", 720),
+            "width": self.int_parameter("camera2/width", 1080),
             "supported_fps": [],
             "hardware_supports_fps_change": False,
             "enable_publishing": True,
             }):
             
-            self.camera1_publisher = self.create_publisher(CompressedImage, 'camera1/image/compressed', 10)
+            self.camera1_publisher = self.create_publisher(CompressedImage, 
+                                                           self.string_parameter("camera1_compressed_topic", "camera1/image/compressed"), 
+                                                           10)
             self.camera1_timer = self.create_timer(1/self.camera1_fps, self.camera1_timer_callback)
             self.get_logger().info("Camera 1 is ready....")
         
         else:
             self.get_logger().info("Camera 1 is dead....")
 
-        self.camera2 = USBCamera(2)
-        self.camera2_fps = 10
-        self.camera2_image_shape = [480, 640]
+        self.camera2 = USBCamera(self.int_parameter("camera2/dev_id", 2))
+        self.camera2_fps = self.int_parameter("camera2/fps", 10)
         self.camera2_exists = False
         self.get_logger().info(f"Initialising camera 2")
 
         if self.camera2.initialise_camera(config={
-            "height": self.camera2_image_shape[0],
-            "width": self.camera2_image_shape[1],
             "fps": self.camera2_fps,
+            "height": self.int_parameter("camera2/height", 720),
+            "width": self.int_parameter("camera2/width", 1080),            
             "supported_fps": [],
             "hardware_supports_fps_change": False,
             "enable_publishing": True,
             }):
                 
-            self.camera2_publisher = self.create_publisher(CompressedImage, 'camera2/image/compressed', 10)
+            self.camera2_publisher = self.create_publisher(CompressedImage, 
+                                                           self.string_parameter("camera2_compressed_topic", "camera2/image/compressed"), 
+                                                           10)
             self.camera2_timer = self.create_timer(1/self.camera2_fps, self.camera2_timer_callback)
             self.get_logger().info("Camera 2 is ready....")
             
         else:
             self.get_logger().info("Camera 2 is dead....")
 
-        self.camera3 = USBCamera(3)
-        self.camera3_fps = 10
-        self.camera3_image_shape = [480, 640]
+        self.camera3 = USBCamera(self.int_parameter("camera3/dev_id", 3))
+        self.camera3_fps = self.int_parameter("camera3/fps", 10)
         self.camera3_exists = False
         self.get_logger().info(f"Initialising camera 3")
 
         if self.camera3.initialise_camera(config={
-            "height": self.camera3_image_shape[0],
-            "width": self.camera3_image_shape[1],
             "fps": self.camera2_fps,
+            "height": self.int_parameter("camera3/height", 720),
+            "width": self.int_parameter("camera3/width", 1080),            
             "supported_fps": [],
             "hardware_supports_fps_change": False,
             "enable_publishing": True,
             }):
                 
-            self.camera3_publisher = self.create_publisher(CompressedImage, 'camera3/image/compressed', 10)
+            self.camera3_publisher = self.create_publisher(CompressedImage, 
+                                                           self.string_parameter("camera3_compressed_topic", "camera3/image/compressed"), 
+                                                           10)
             self.camera3_timer = self.create_timer(1/self.camera3_fps, self.camera3_timer_callback)
             self.get_logger().info("Camera 3 is ready....")
             
@@ -227,8 +236,46 @@ class MultipleCameraPublisher(Node):
         else:
             del self.camera3
 
-        self.status_publisher = self.create_publisher(MultipleCameraStatus, 'multiple_camera/status', 10)
-        self.status_timer = self.create_timer(1.0, self.status_timer_callback)
+        self.status_publisher = self.create_publisher(MultipleCameraStatus, 
+                                                      self.string_parameter("multiple_camera_status_topic", "multiple_camera/status"), 
+                                                      10)
+        self.status_timer = self.create_timer(self.double_parameter("multiple_camera_status_message_hz", 1.0), self.status_timer_callback)
+
+    def int_parameter(self, param_name: str, default_value: int):
+        self.declare_parameter(param_name, default_value)
+        
+        try:
+            updated_param = self.get_parameter(param_name).get_parameter_value().integer_value
+     
+        except Exception as e:
+            self.get_logger().error(f"Unable to read parameter: {param_name}")
+            updated_param = default_value
+        
+        return updated_param
+
+    def string_parameter(self, param_name: str, default_value: str):
+        self.declare_parameter(param_name, default_value)
+        
+        try:
+            updated_param = self.get_parameter(param_name).get_parameter_value().string_value
+        
+        except Exception as e:
+            self.get_logger().error(f"Unable to read parameter: {param_name}")
+            updated_param = default_value
+        
+        return updated_param
+
+    def double_parameter(self, param_name: str, default_value: float):
+        self.declare_parameter(param_name, default_value)
+        
+        try:
+            updated_param = self.get_parameter(param_name).get_parameter_value().double_value
+        
+        except Exception as e:
+            self.get_logger().error(f"Unable to read parameter: {param_name}")
+            updated_param = default_value
+        
+        return updated_param
 
     def modify_camera_settings_callback(self, request, response): 
         """
@@ -245,6 +292,7 @@ class MultipleCameraPublisher(Node):
                 self.camera0.camera_settings["enable_publishing"] = request.enable_publishing
                 self.camera0.camera_settings["height"] = request.height
                 self.camera0.camera_settings["width"] = request.width
+                self.camera0.configure_image_size()
 
                 self.get_logger().info(f"Camera 0 (h {request.height}, w {request.width}), publish {request.enable_publishing}")
 
@@ -253,7 +301,11 @@ class MultipleCameraPublisher(Node):
                     self.camera0_timer.timer_period_ns = 1/self.camera0_fps * 1e9
                     self.get_logger().info(f"Camera 0 set to {self.camera0_fps} FPS")
 
-                response.success = self.camera0.configure_camera()
+                    if self.camera0.camera_settings["hardware_supports_fps_change"]:
+                        self.camera0.configure_hardware_fps(fps=request.fps)
+            
+                response.success = True
+            
             else:
                 response.success = False
 
@@ -262,6 +314,7 @@ class MultipleCameraPublisher(Node):
                 self.camera1.camera_settings["enable_publishing"] = request.enable_publishing
                 self.camera1.camera_settings["height"] = request.height
                 self.camera1.camera_settings["width"] = request.width
+                self.camera1.configure_image_size()
                 
                 self.get_logger().info(f"Camera 1 (h {request.height}, w {request.width}), publish {request.enable_publishing}")
                 
@@ -270,7 +323,11 @@ class MultipleCameraPublisher(Node):
                     self.camera1_timer.timer_period_ns = 1/self.camera1_fps * 1e9
                     self.get_logger().info(f"Camera 1 set to {self.camera1_fps} FPS")
 
-                response.success = self.camera1.configure_camera()
+                    if self.camera1.camera_settings["hardware_supports_fps_change"]:
+                        self.camera1.configure_hardware_fps(fps=request.fps)
+                
+                response.success = True
+
             else:
                 response.success = False
 
@@ -279,7 +336,8 @@ class MultipleCameraPublisher(Node):
                 self.camera2.camera_settings["enable_publishing"] = request.enable_publishing
                 self.camera2.camera_settings["height"] = request.height
                 self.camera2.camera_settings["width"] = request.width
-
+                self.camera2.configure_image_size()
+                
                 self.get_logger().info(f"Camera 2 (h {request.height}, w {request.width}), publish {request.enable_publishing}")
 
                 if self.camera2_fps != request.fps and 0 < request.fps <= 30:
@@ -287,7 +345,11 @@ class MultipleCameraPublisher(Node):
                     self.camera2_timer.timer_period_ns = 1/self.camera2_fps * 1e9
                     self.get_logger().info(f"Camera 2 set to {self.camera2_fps} FPS")
 
-                response.success = self.camera2.configure_camera()
+                    if self.camera2.camera_settings["hardware_supports_fps_change"]:
+                        self.camera2.configure_hardware_fps(fps=request.fps)
+                
+                response.success = True
+
             else:
                 response.success = False
 
@@ -296,6 +358,7 @@ class MultipleCameraPublisher(Node):
                 self.camera3.camera_settings["enable_publishing"] = request.enable_publishing
                 self.camera3.camera_settings["height"] = request.height
                 self.camera3.camera_settings["width"] = request.width
+                self.camera3.configure_image_size()
 
                 self.get_logger().info(f"Camera 3 (h {request.height}, w {request.width}), publish {request.enable_publishing}")
 
@@ -303,10 +366,15 @@ class MultipleCameraPublisher(Node):
                     self.camera3_fps = request.fps
                     self.camera3_timer.timer_period_ns = 1/self.camera3_fps * 1e9
                     self.get_logger().info(f"Camera 3 set to {self.camera3_fps} FPS")
+
+                    if self.camera3.camera_settings["hardware_supports_fps_change"]:
+                        self.camera3.configure_hardware_fps(fps=request.fps)
                 
-                response.success = self.camera3.configure_camera()
+                response.success = True
+
             else:
                 response.success = False
+
         else:
             response.success = False
         
