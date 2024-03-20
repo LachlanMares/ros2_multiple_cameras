@@ -23,18 +23,6 @@ class CameraParameterNode(Node):
                                                          self.string_parameter("camera_id_service", "multiple_camera/get_camera_id"), 
                                                          self.get_camera_id_callback)    
     
-    def int_parameter(self, param_name: str, default_value: int):
-        self.declare_parameter(param_name, default_value)
-        
-        try:
-            updated_param = self.get_parameter(param_name).get_parameter_value().integer_value
-     
-        except Exception as e:
-            self.get_logger().error(f"Unable to read parameter: {param_name}")
-            updated_param = default_value
-        
-        return updated_param    
-    
     def string_parameter(self, param_name: str, default_value: str):
         self.declare_parameter(param_name, default_value)
         

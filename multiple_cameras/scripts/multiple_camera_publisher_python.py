@@ -801,12 +801,11 @@ class MultipleCameraPublisher(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     multiple_camera_publisher = MultipleCameraPublisher()
-    
     rclpy.spin(multiple_camera_publisher)
-
+    multiple_camera_publisher.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -37,7 +37,7 @@ class CompressedImageSubscriber(Node):
 
         self.camera2_name = self.string_parameter("camera2/name", "camera2")
 
-        if self.camera1_name.lower() != "none":
+        if self.camera2_name.lower() != "none":
             if self.camera2_name != "camera2":
                 self.camera2_subscriber = self.create_subscription(CompressedImage, f'{self.camera2_name}/image/compressed', self.camera2_compressed_image_callback, 10)
                 self.camera2_publisher = self.create_publisher(Image, f'{self.camera2_name}/image/decompressed', 10)
@@ -174,14 +174,11 @@ class CompressedImageSubscriber(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     compressed_image_subscriber = CompressedImageSubscriber()
-    
     rclpy.spin(compressed_image_subscriber)
-
     compressed_image_subscriber.destroy_node()
-
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
