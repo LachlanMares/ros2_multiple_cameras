@@ -22,6 +22,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CameraStatus.msg"
   "msg/MultipleCameraStatus.msg"
   "srv/ModifyCameraSettings.srv"
+  "srv/CameraId.srv"
   DEPENDENCIES 
 )
 
@@ -56,6 +57,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/multiple_camera_publisher_python.py
   scripts/compressed_to_image_publisher_python.py
+  scripts/define_camera_parameters.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

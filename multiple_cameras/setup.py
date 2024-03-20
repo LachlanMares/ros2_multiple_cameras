@@ -20,8 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'multiple_camera_publisher = multiple_cameras.multiple_camera_publisher_python:main',
-            'multiple_camera_publisher = multiple_cameras.compressed_to_image_publisher_python:main',
+            'multiple_camera_publisher_python = multiple_cameras.multiple_camera_publisher_python:main',
+            'compressed_to_image_publisher_python = multiple_cameras.compressed_to_image_publisher_python:main',
+            'define_camera_parameters = multiple_cameras.define_camera_parameters:main',
         ],
     },
 )

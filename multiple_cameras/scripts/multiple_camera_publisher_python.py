@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from multiple_cameras.srv import ModifyCameraSettings    
+from multiple_cameras.srv import ModifyCameraSettings, CameraId    
 from multiple_cameras.msg import MultipleCameraStatus                                                        
 from sensor_msgs.msg import CompressedImage
 
@@ -119,11 +119,18 @@ class MultipleCameraPublisher(Node):
                                                          self.modify_camera_settings_callback)       
         
         self.bridge = CvBridge()
+        self.camera_id_client = self.create_client(CameraId, self.string_parameter("camera_id_service", "multiple_camera/get_camera_id"))   
+        
+        while not self.camera_id_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Camera ID service not available, waiting again...')
 
-        self.camera0 = USBCamera(self.int_parameter("camera0/dev_id", 0))
+
+        # self.camera0 = USBCamera(self.int_parameter("camera0/dev_id", 0))
+        cam_name = self.string_parameter("camera0/name", " ")
+        self.camera0 = USBCamera(self.get_camera_dev_id(cam_name))
         self.camera0_fps = self.int_parameter("camera0/fps", 10)
         self.camera0_exists = False
-        self.get_logger().info(f"Initialising camera 0")
+        self.get_logger().info(f"Initialising camera 0 as {cam_name}")
 
         if self.camera0.initialise_camera(config={
             "fps": self.camera0_fps,
@@ -143,10 +150,12 @@ class MultipleCameraPublisher(Node):
         else:
             self.get_logger().info("Camera 0 is dead....")
 
-        self.camera1 = USBCamera(self.int_parameter("camera1/dev_id", 1))
+        #self.camera1 = USBCamera(self.int_parameter("camera1/dev_id", 1))
+        cam_name = self.string_parameter("camera1/name", " ")
+        self.camera1 = USBCamera(self.get_camera_dev_id(cam_name))
         self.camera1_fps = self.int_parameter("camera1/fps", 10)
         self.camera1_exists = False
-        self.get_logger().info(f"Initialising camera 1")
+        self.get_logger().info(f"Initialising camera 1 as {cam_name}")
         
         if self.camera1.initialise_camera(config={
             "fps": self.camera1_fps,
@@ -166,10 +175,12 @@ class MultipleCameraPublisher(Node):
         else:
             self.get_logger().info("Camera 1 is dead....")
 
-        self.camera2 = USBCamera(self.int_parameter("camera2/dev_id", 2))
+        #self.camera2 = USBCamera(self.int_parameter("camera2/dev_id", 2))
+        cam_name = self.string_parameter("camera2/name", " ")
+        self.camera2 = USBCamera(self.get_camera_dev_id(cam_name))
         self.camera2_fps = self.int_parameter("camera2/fps", 10)
         self.camera2_exists = False
-        self.get_logger().info(f"Initialising camera 2")
+        self.get_logger().info(f"Initialising camera 2 as {cam_name}")
 
         if self.camera2.initialise_camera(config={
             "fps": self.camera2_fps,
@@ -189,10 +200,12 @@ class MultipleCameraPublisher(Node):
         else:
             self.get_logger().info("Camera 2 is dead....")
 
-        self.camera3 = USBCamera(self.int_parameter("camera3/dev_id", 3))
+        #self.camera3 = USBCamera(self.int_parameter("camera3/dev_id", 3))
+        cam_name = self.string_parameter("camera3/name", " ")
+        self.camera3 = USBCamera(self.get_camera_dev_id(cam_name))
         self.camera3_fps = self.int_parameter("camera3/fps", 10)
         self.camera3_exists = False
-        self.get_logger().info(f"Initialising camera 3")
+        self.get_logger().info(f"Initialising camera 3 as {cam_name}")
 
         if self.camera3.initialise_camera(config={
             "fps": self.camera3_fps,
@@ -212,10 +225,12 @@ class MultipleCameraPublisher(Node):
         else:
             self.get_logger().info("Camera 3 is dead....")
 
-        self.camera4 = USBCamera(self.int_parameter("camera4/dev_id", 4))
+        # self.camera4 = USBCamera(self.int_parameter("camera4/dev_id", 4))
+        cam_name = self.string_parameter("camera4/name", " ")
+        self.camera4 = USBCamera(self.get_camera_dev_id(cam_name))
         self.camera4_fps = self.int_parameter("camera4/fps", 10)
         self.camera4_exists = False
-        self.get_logger().info(f"Initialising camera 4")
+        self.get_logger().info(f"Initialising camera 4 as {cam_name}")
 
         if self.camera4.initialise_camera(config={
             "fps": self.camera4_fps,
@@ -235,10 +250,12 @@ class MultipleCameraPublisher(Node):
         else:
             self.get_logger().info("Camera 4 is dead....")
 
-        self.camera5 = USBCamera(self.int_parameter("camera5/dev_id", 3))
+        #self.camera5 = USBCamera(self.int_parameter("camera5/dev_id", 5))
+        cam_name = self.string_parameter("camera5/name", " ")
+        self.camera5 = USBCamera(self.get_camera_dev_id(cam_name))
         self.camera5_fps = self.int_parameter("camera5/fps", 10)
         self.camera5_exists = False
-        self.get_logger().info(f"Initialising camera 5")
+        self.get_logger().info(f"Initialising camera 5 as {cam_name}")
 
         if self.camera5.initialise_camera(config={
             "fps": self.camera5_fps,
@@ -298,6 +315,18 @@ class MultipleCameraPublisher(Node):
                                                       self.string_parameter("multiple_camera_status_topic", "multiple_camera/status"), 
                                                       10)
         self.status_timer = self.create_timer(self.double_parameter("multiple_camera_status_message_hz", 1.0), self.status_timer_callback)
+
+    def get_camera_dev_id(self, name: str):
+        camera_id_req = CameraId.Request()      
+        camera_id_req.camera_name = name
+        future = self.camera_id_client.call_async(camera_id_req)
+        
+        while not future.done():
+            rclpy.spin_once(self, timeout_sec=0.5)
+
+        result: CameraId.Response = future.result()
+
+        return result.dev_id
 
     def int_parameter(self, param_name: str, default_value: int):
         self.declare_parameter(param_name, default_value)
