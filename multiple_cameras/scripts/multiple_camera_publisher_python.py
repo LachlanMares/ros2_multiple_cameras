@@ -13,9 +13,8 @@ import threading
 import time
 
 class USBCamera:
-    def __init__(self, dev_id: str):
+    def __init__(self, dev_id):
         self.camera_settings = {
-            "dev_id": dev_id,
             "height": 720,
             "width": 1280,
             "raw_height": 720,
@@ -28,39 +27,45 @@ class USBCamera:
             "enable_publishing": False,
         }
 
-        self.cap = cv2.VideoCapture(self.camera_settings["dev_id"])  
+        if isinstance(dev_id, str):
+            self.cap = cv2.VideoCapture(dev_id)  # Should be something like '/dev/video0'
+        elif isinstance(dev_id, int):
+            self.cap = cv2.VideoCapture(dev_id*2)  # If Int multiply by two as USB cameras take up 2 video slots
+        else:
+            self.cap = None
+        
         self.latest_image = None
 
         self.camera_read_thread = threading.Thread(target=self.camera_read_loop, daemon=True)
         self.read_lock = threading.Lock()
 
     def initialise_camera(self, config: dict):
-        if self.cap.isOpened():
-            fps_set = False
-            ret, self.latest_image = self.cap.read()
-            
-            if ret:
-                im_shape = self.latest_image.shape
-
-                self.camera_settings["height"] = config["height"] if "height" in config.keys() else im_shape[0]
-                self.camera_settings["width"] = config["width"] if "width" in config.keys() else im_shape[1]
-                self.camera_settings["raw_height"] = im_shape[0]
-                self.camera_settings["raw_width"] = im_shape[1]
-                self.camera_settings["hardware_fps"] = self.cap.get(cv2.CAP_PROP_FPS)
-                self.camera_settings["enable_publishing"] = config["enable_publishing"]
-
-                if self.camera_settings["height"] != im_shape[0] or self.camera_settings["width"] != im_shape[1]:
-                    self.camera_settings["resize"] = True
-                else:
-                    self.camera_settings["resize"] = False
-
-                if config["hardware_supports_fps_change"]:  # Not all USB cameras do
-                    self.camera_settings["supported_fps"] = config["supported_fps"]
-                    self.configure_hardware_fps(fps=config["fps"])
-
-                self.camera_settings["running"] = True
+        if self.cap is not None:
+            if self.cap.isOpened():
+                ret, self.latest_image = self.cap.read()
                 
-        return self.camera_settings["running"] 
+                if ret:
+                    im_shape = self.latest_image.shape
+
+                    self.camera_settings["height"] = config["height"] if "height" in config.keys() else im_shape[0]
+                    self.camera_settings["width"] = config["width"] if "width" in config.keys() else im_shape[1]
+                    self.camera_settings["raw_height"] = im_shape[0]
+                    self.camera_settings["raw_width"] = im_shape[1]
+                    self.camera_settings["hardware_fps"] = self.cap.get(cv2.CAP_PROP_FPS)
+                    self.camera_settings["enable_publishing"] = config["enable_publishing"]
+
+                    if self.camera_settings["height"] != im_shape[0] or self.camera_settings["width"] != im_shape[1]:
+                        self.camera_settings["resize"] = True
+                    else:
+                        self.camera_settings["resize"] = False
+
+                    if config["hardware_supports_fps_change"]:  # Not all USB cameras do
+                        self.camera_settings["supported_fps"] = config["supported_fps"]
+                        self.configure_hardware_fps(fps=config["fps"])
+
+                    self.camera_settings["running"] = True
+                    
+            return self.camera_settings["running"] 
 
     def get_some(self):
         self.camera_read_thread.start()
