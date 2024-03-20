@@ -9,14 +9,14 @@ class CameraParameterNode(Node):
         super().__init__('camera_parameter_node')
         
         # Define and Set ROS parameters
-        self.params_dict = {self.string_parameter("camera0/name", "camera0"): self.int_parameter('camera0/dev_id', 0),
-                            self.string_parameter("camera1/name", "camera1"): self.int_parameter('camera1/dev_id', 1),
-                            self.string_parameter("camera2/name", "camera2"): self.int_parameter('camera2/dev_id', 2),
-                            self.string_parameter("camera3/name", "camera3"): self.int_parameter('camera3/dev_id', 3),
-                            self.string_parameter("camera4/name", "camera4"): self.int_parameter('camera4/dev_id', 4),
-                            self.string_parameter("camera5/name", "camera5"): self.int_parameter('camera5/dev_id', 5),
-                            self.string_parameter("camera6/name", "camera6"): self.int_parameter('camera6/dev_id', 6),
-                            self.string_parameter("camera7/name", "camera7"): self.int_parameter('camera7/dev_id', 7),
+        self.params_dict = {self.string_parameter("camera0/name", "camera0"): self.string_parameter('camera0/dev_id', '/dev/video0'),
+                            self.string_parameter("camera1/name", "camera1"): self.string_parameter('camera1/dev_id', '/dev/video2'),
+                            self.string_parameter("camera2/name", "camera2"): self.string_parameter('camera2/dev_id', '/dev/video4'),
+                            self.string_parameter("camera3/name", "camera3"): self.string_parameter('camera3/dev_id', '/dev/video6'),
+                            self.string_parameter("camera4/name", "camera4"): self.string_parameter('camera4/dev_id', '/dev/video8'),
+                            self.string_parameter("camera5/name", "camera5"): self.string_parameter('camera5/dev_id', '/dev/video10'),
+                            self.string_parameter("camera6/name", "camera6"): self.string_parameter('camera6/dev_id', '/dev/video12'),
+                            self.string_parameter("camera7/name", "camera7"): self.string_parameter('camera7/dev_id', '/dev/video14'),
                             }
 
         self.get_camera_id_service = self.create_service(CameraId, 
@@ -51,7 +51,7 @@ class CameraParameterNode(Node):
         """
         string camera_name
         ---
-        int64 dev_id
+        string dev_id
         """       
         if request.camera_name in self.params_dict.keys():
             response.dev_id = self.params_dict[request.camera_name]

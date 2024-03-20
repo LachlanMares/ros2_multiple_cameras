@@ -13,7 +13,7 @@ import threading
 import time
 
 class USBCamera:
-    def __init__(self, dev_id: int):
+    def __init__(self, dev_id: str):
         self.camera_settings = {
             "dev_id": dev_id,
             "height": 720,
@@ -28,7 +28,7 @@ class USBCamera:
             "enable_publishing": False,
         }
 
-        self.cap = cv2.VideoCapture(self.camera_settings["dev_id"]*2)  # USB cameras hold two dev/video slots
+        self.cap = cv2.VideoCapture(self.camera_settings["dev_id"])  
         self.latest_image = None
 
         self.camera_read_thread = threading.Thread(target=self.camera_read_loop, daemon=True)
@@ -347,7 +347,7 @@ class MultipleCameraPublisher(Node):
 
         self.camera7_name = self.string_parameter("camera7/name", "camera7")
         self.camera7_exists = False
-        
+
         if self.camera7_name.lower() != "none":
             if self.camera7_name == "camera7":
                 self.camera7_exists = USBCamera(7)

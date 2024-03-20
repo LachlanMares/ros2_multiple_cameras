@@ -41,7 +41,6 @@ ament_target_dependencies(modify_camera_settings_client rclcpp multiple_cameras)
 add_executable(modify_camera_settings_client_string src/modify_camera_settings_client_string.cpp)
 ament_target_dependencies(modify_camera_settings_client_string rclcpp multiple_cameras)
 
-
 # Export the launch files.
 install(DIRECTORY
     launch
