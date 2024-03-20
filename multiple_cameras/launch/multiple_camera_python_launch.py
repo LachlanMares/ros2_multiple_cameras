@@ -2,27 +2,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    return LaunchDescription([
-        Node(
-            package="multiple_cameras",
-            executable="define_camera_parameters.py",
-            name="define_camera_parameters",
-            output="screen",
-            emulate_tty=True,
-            parameters=[
-                {'camera_id_service': 'multiple_camera/get_camera_id',
-                 '/camera/front/dev_id': 0,
-                 '/camera/back/dev_id': 1,
-                 '/camera/left/dev_id': 2,
-                 '/camera/right/dev_id': 3,
-                 '/camera/top/dev_id': 4,
-                 '/camera/bottom/dev_id': 5,
-                 '/camera/drill/dev_id': 6,
-                 '/camera/scoop/dev_id': 7,
-                }
-            ],
-        ),
-        
+    return LaunchDescription([       
         Node(
             package="multiple_cameras",
             executable="multiple_camera_publisher_python.py",
@@ -30,50 +10,48 @@ def generate_launch_description():
             output="screen",
             emulate_tty=True,
             parameters=[
-                {"modify_camera_settings_service": "multiple_camera/modify_camera_settings",
+                {"modify_camera_settings_service": "multiple_camera/modify_camera_settings_string",
                  "camera_id_service": "multiple_camera/get_camera_id",
-                 
-                 "camera0/compressed_topic": "camera0/image/compressed", 
-                 "camera0/dev_id": 0, 
-                 "camera0/name": "front", 
+
+                 "camera0/name": "saitama", 
                  "camera0/fps": 10, 
                  "camera0/height": 720, 
-                 "camera0/width": 1080, 
-                 
-                 "camera1/compressed_topic": "camera1/image/compressed", 
-                 "camera1/dev_id": 1, 
-                 "camera1/name": "back", 
+                 "camera0/width": 1080,
+
+                 "camera1/name": "demon_cyborg", 
                  "camera1/fps": 10, 
                  "camera1/height": 720, 
-                 "camera1/width": 1080, 
-                 
-                 "camera2/compressed_topic": "camera2/image/compressed", 
-                 "camera2/dev_id": 2, 
-                 "camera2/name": "left", 
+                 "camera1/width": 1080,                   
+
+                 "camera2/name": "none", 
                  "camera2/fps": 10, 
                  "camera2/height": 720, 
                  "camera2/width": 1080, 
-                
-                 "camera3/compressed_topic": "camera3/image/compressed", 
-                 "camera3/dev_id": 3, 
-                 "camera3/name": "right", 
+
+                 "camera3/name": "none", 
                  "camera3/fps": 10, 
                  "camera3/height": 720, 
                  "camera3/width": 1080, 
 
-                 "camera4/compressed_topic": "camera4/image/compressed", 
-                 "camera4/dev_id": 4, 
-                 "camera4/name": "top", 
+                 "camera4/name": "none", 
                  "camera4/fps": 10, 
                  "camera4/height": 720, 
                  "camera4/width": 1080, 
-
-                 "camera5/compressed_topic": "camera5/image/compressed", 
-                 "camera5/dev_id": 5, 
-                 "camera5/name": "bottom", 
+                 
+                 "camera5/name": "none", 
                  "camera5/fps": 10, 
                  "camera5/height": 720, 
                  "camera5/width": 1080, 
+
+                 "camera6/name": "none", 
+                 "camera6/fps": 10, 
+                 "camera6/height": 720, 
+                 "camera6/width": 1080, 
+
+                 "camera7/name": "none", 
+                 "camera7/fps": 10, 
+                 "camera7/height": 720, 
+                 "camera7/width": 1080, 
 
                  "multiple_camera_status_topic": "multiple_camera/status",    
                  "multiple_camera_status_message_hz": 1.0, 

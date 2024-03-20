@@ -9,14 +9,14 @@ class CameraParameterNode(Node):
         super().__init__('camera_parameter_node')
         
         # Define and Set ROS parameters
-        self.params_dict = {"front": self.int_parameter('/camera/front/dev_id', 0),
-                            "back": self.int_parameter('/camera/back/dev_id', 1),
-                            "left": self.int_parameter('/camera/left/dev_id', 2),
-                            "right": self.int_parameter('/camera/right/dev_id', 3),
-                            "top": self.int_parameter('/camera/top/dev_id', 4),
-                            "bottom": self.int_parameter('/camera/bottom/dev_id', 5),
-                            "drill": self.int_parameter('/camera/drill/dev_id', 6),
-                            "scoop": self.int_parameter('/camera/scoop/dev_id', 7)
+        self.params_dict = {self.string_parameter("camera0/name", "camera0"): self.int_parameter('camera0/dev_id', 0),
+                            self.string_parameter("camera1/name", "camera1"): self.int_parameter('camera1/dev_id', 1),
+                            self.string_parameter("camera2/name", "camera2"): self.int_parameter('camera2/dev_id', 2),
+                            self.string_parameter("camera3/name", "camera3"): self.int_parameter('camera3/dev_id', 3),
+                            self.string_parameter("camera4/name", "camera4"): self.int_parameter('camera4/dev_id', 4),
+                            self.string_parameter("camera5/name", "camera5"): self.int_parameter('camera5/dev_id', 5),
+                            self.string_parameter("camera6/name", "camera6"): self.int_parameter('camera6/dev_id', 6),
+                            self.string_parameter("camera7/name", "camera7"): self.int_parameter('camera7/dev_id', 7),
                             }
 
         self.get_camera_id_service = self.create_service(CameraId, 

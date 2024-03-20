@@ -22,6 +22,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CameraStatus.msg"
   "msg/MultipleCameraStatus.msg"
   "srv/ModifyCameraSettings.srv"
+  "srv/ModifyCameraSettingsString.srv"
   "srv/CameraId.srv"
   DEPENDENCIES 
 )
@@ -37,6 +38,10 @@ ament_target_dependencies(compressed_to_image_publisher rclcpp std_msgs sensor_m
 add_executable(modify_camera_settings_client src/modify_camera_settings_client.cpp)
 ament_target_dependencies(modify_camera_settings_client rclcpp multiple_cameras)
 
+add_executable(modify_camera_settings_client_string src/modify_camera_settings_client_string.cpp)
+ament_target_dependencies(modify_camera_settings_client_string rclcpp multiple_cameras)
+
+
 # Export the launch files.
 install(DIRECTORY
     launch
@@ -47,6 +52,7 @@ install(TARGETS
   multiple_camera_publisher
   compressed_to_image_publisher
   modify_camera_settings_client
+  modify_camera_settings_client_string
   DESTINATION lib/${PROJECT_NAME}
 )
 
