@@ -141,9 +141,11 @@ class MultipleCameraPublisher(Node):
             "enable_publishing": True,
             }):
            
-            self.camera0_publisher = self.create_publisher(CompressedImage, 
-                                                           self.string_parameter("camera0_compressed_topic", "camera0/image/compressed"), 
-                                                           10)
+            # self.camera0_publisher = self.create_publisher(CompressedImage, 
+            #                                                self.string_parameter("camera0_compressed_topic", "camera0/image/compressed"), 
+            #                                                10)
+
+            self.camera0_publisher = self.create_publisher(CompressedImage, f"{cam_name}/image/compressed", 10)  
             self.camera0_timer = self.create_timer(1/self.camera0_fps, self.camera0_timer_callback)
             self.get_logger().info("Camera 0 is ready....")
    
@@ -166,9 +168,11 @@ class MultipleCameraPublisher(Node):
             "enable_publishing": True,
             }):
             
-            self.camera1_publisher = self.create_publisher(CompressedImage, 
-                                                           self.string_parameter("camera1_compressed_topic", "camera1/image/compressed"), 
-                                                           10)
+            # self.camera1_publisher = self.create_publisher(CompressedImage, 
+            #                                                self.string_parameter("camera1_compressed_topic", "camera1/image/compressed"), 
+            #                                                10)
+
+            self.camera1_publisher = self.create_publisher(CompressedImage, f"{cam_name}/image/compressed", 10) 
             self.camera1_timer = self.create_timer(1/self.camera1_fps, self.camera1_timer_callback)
             self.get_logger().info("Camera 1 is ready....")
         
@@ -191,9 +195,11 @@ class MultipleCameraPublisher(Node):
             "enable_publishing": True,
             }):
                 
-            self.camera2_publisher = self.create_publisher(CompressedImage, 
-                                                           self.string_parameter("camera2_compressed_topic", "camera2/image/compressed"), 
-                                                           10)
+            # self.camera2_publisher = self.create_publisher(CompressedImage, 
+            #                                                self.string_parameter("camera2_compressed_topic", "camera2/image/compressed"), 
+            #                                                10)
+
+            self.camera2_publisher = self.create_publisher(CompressedImage, f"{cam_name}/image/compressed", 10) 
             self.camera2_timer = self.create_timer(1/self.camera2_fps, self.camera2_timer_callback)
             self.get_logger().info("Camera 2 is ready....")
             
@@ -216,9 +222,11 @@ class MultipleCameraPublisher(Node):
             "enable_publishing": True,
             }):
                 
-            self.camera3_publisher = self.create_publisher(CompressedImage, 
-                                                           self.string_parameter("camera3_compressed_topic", "camera3/image/compressed"), 
-                                                           10)
+            # self.camera3_publisher = self.create_publisher(CompressedImage, 
+            #                                                self.string_parameter("camera3_compressed_topic", "camera3/image/compressed"), 
+            #                                                10)
+
+            self.camera3_publisher = self.create_publisher(CompressedImage, f"{cam_name}/image/compressed", 10) 
             self.camera3_timer = self.create_timer(1/self.camera3_fps, self.camera3_timer_callback)
             self.get_logger().info("Camera 3 is ready....")
             
@@ -241,9 +249,11 @@ class MultipleCameraPublisher(Node):
             "enable_publishing": True,
             }):
                 
-            self.camera4_publisher = self.create_publisher(CompressedImage, 
-                                                           self.string_parameter("camera4_compressed_topic", "camera4/image/compressed"), 
-                                                           10)
+            # self.camera4_publisher = self.create_publisher(CompressedImage, 
+            #                                                self.string_parameter("camera4_compressed_topic", "camera4/image/compressed"), 
+            #                                                10)
+
+            self.camera4_publisher = self.create_publisher(CompressedImage, f"{cam_name}/image/compressed", 10) 
             self.camera4_timer = self.create_timer(1/self.camera4_fps, self.camera4_timer_callback)
             self.get_logger().info("Camera 4 is ready....")
             
@@ -266,9 +276,11 @@ class MultipleCameraPublisher(Node):
             "enable_publishing": True,
             }):
                 
-            self.camera5_publisher = self.create_publisher(CompressedImage, 
-                                                           self.string_parameter("camera5_compressed_topic", "camera5/image/compressed"), 
-                                                           10)
+            # self.camera5_publisher = self.create_publisher(CompressedImage, 
+            #                                                self.string_parameter("camera5_compressed_topic", "camera5/image/compressed"), 
+            #                                                10)
+
+            self.camera5_publisher = self.create_publisher(CompressedImage, f"{cam_name}/image/compressed", 10) 
             self.camera5_timer = self.create_timer(1/self.camera5_fps, self.camera5_timer_callback)
             self.get_logger().info("Camera 5 is ready....")
             
